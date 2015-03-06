@@ -1,10 +1,13 @@
 {
-  "name": "My testing config",
+  "name": "Simple testing config",
   "info": "This config is meant to query some values and define min and max",
-  "index": "logstash-2015.02.21",
-  "type": "jsonlog",
+  "index": "monitoring",
+  "type": "rum",
   "query": {
-    "query": "*"
+    "query_string": {
+      "query": "_exists_:renderTime",
+      "analyze_wildcard": true
+    }
   },
   "min": 0,
   "max": 10,

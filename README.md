@@ -12,6 +12,11 @@ cd elasticwatch
 npm install
 ```
 
+Create some data in your elasticsearch
+```bash
+curl -s -XPUT 'http://localhost:9200/monitoring/rum/1' -d '{"requestTime":43,"responseTime":224,"renderTime":568}'
+```
+
 Then create a simple configuration within the `config` dir.
 ```json
 {

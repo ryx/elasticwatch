@@ -7,16 +7,14 @@ Worker = require("./worker")
 ###
 module.exports = class App
 
-  constructor: ->
-    # read args and setup core options
-    # An object of options to indicate where to post to
-    # ...
-    # read configs
-    # ...
-    # perform requests based on configs
-    new Worker()
-    # -> loop (done in worker):
-    # ... instantiate required reporters
-    # ... perform request
-    # ... raise alarms
-    # ... notify reporters
+  constructor: (@config) ->
+    # run over tests and create worker for each test
+    if @config.tests
+      for test, i in @config.tests
+        # perform requests based on configs
+        try
+          cfg = require("../tests/#{test}")
+          (new Worker("#{i}", cfg)).start()
+        catch e
+          console.error(e)
+          console.error("App.constructor: ERROR: test #{test} not found")

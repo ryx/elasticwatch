@@ -1,56 +1,56 @@
 http = require("http")
 
 ###*
-# The worker does most of the magic. It takes a single config, connects
-# to elasticsearch, analyzes the result, compares it to the expectation
-# and raises an alarm where appropriate.
+# The Worker does most of the magic. It takes a single test config, queries
+# data from elasticsearch, analyzes the result, compares it to the expectation,
+# raises an alarm and informs reporters where appropriate.
 ###
 module.exports = class Worker
 
-  constructor: (@config) ->
-    # ElasticSearch Expects JSON not Querystring!
-    data = JSON.stringify({
-      query:
-        query_string:
-          query: "_exists_:NavTimingRenderTime"
-          analyze_wildcard: true
-    })
-    console.log("POST data is: ", data)
-    # create post options (@TODO: use info from config)
+  # prepare data, setup request options
+  constructor: (@id, @config) ->
+    # @FIXME: validate config first
+    # instantiate required reporters
+    # ...
+    # build query data
+    @data = JSON.stringify({query:@config.query})
+    # create post options
     @options =
-      host: "localhost"
-      port: "9200"
-      path: "/logstash-2015.02.21/jsonlog/_search"  # @TODO use index/type from config here
+      host: "localhost" # @FIXME use global config here
+      port: "9200" # @FIXME use global config here
+      path: "/#{@config.index}/#{@config.type}/_search"
       method: "POST"
       headers:
         "Content-Type": "application/json"
-        "Content-Length": Buffer.byteLength(data)
+        "Content-Length": Buffer.byteLength(@data)
+
+  # start working (executes request and hand over control to onRepsonse callback)
+  start: =>
     try
       @request = http.request(@options, @onResponse)
       @request.on("error", @onError)
-    catch e
-      console.log(e.message)
-    if @request
-      @request.write(data)
+      console.log("Worker(#{@id}).start: query data is: ", @data)
+      @request.write(@data)
       @request.end()
+    catch e
+      console.error("Worker(#{@id}).start: unhandled error: ", e.message)
 
   # success callback
   onResponse: (response) =>
-    #console.log("onResponse: ", response)
+    console.log("Worker(#{@id}).onResponse: status is #{response.statusCode}")
     # if we have a success code
     if response.statusCode is 200
       body = ""
-      console.log("Status OK")
       response.setEncoding("utf8")
-
-      response.on "data", (chunk) ->
+      response.on "data", (chunk) =>
         body += chunk
-        console.log("Chunk: " + chunk)
-
-      response.on "end", (error) ->
-        console.log("Response: " + body)
+      response.on "end", (error) =>
+        console.log("Worker(#{@id}).onResponse: response was: ", body)
+        # evaluate results and compare them to expectation
+        # ...
+        # if they don't match: raise alarms and notify reporters
+        # ...
     else
-      console.log("Status is ", response.statusCode)
       @request.end()
 
   # error handling callback
@@ -58,5 +58,5 @@ module.exports = class Worker
     if error.code is "ECONNREFUSED"
       console.error("ERROR: connection refused, please make sure elasticsearch is running and accessible under #{@options.host}:#{@options.port}")
     else
-      console.log("ERROR: unhandled", error)
+      console.log("Worker(#{@id}).onError: unhandled error: ", error)
     @request.end()
