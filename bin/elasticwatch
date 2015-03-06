@@ -1,2 +1,2 @@
 #!/bin/sh
-node_modules/.bin/coffee src/elasticwatch.coffee
+node_modules/.bin/coffee src/main.coffee

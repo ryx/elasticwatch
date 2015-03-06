@@ -1,8 +1,8 @@
 # elasticwatch v0.0.0
 
-Elasticwatch is a nifty tool that periodically queries an elasticsearch database and compares the returned values with a defined min/max range. If the values are out of range a reporter is notified and can perform any kind of action (e.g. alerting someone).
+Elasticwatch is a nifty tool that periodically queries an elasticsearch database and compares the results to a given expectation. If the results don't match the expectation a reporter is notified and can perform any kind of action (e.g. send an email to your dev team).
 
-This allows to create intelligent alarming setups based on your ELK data, no matter if it's gathered from infrastructure monitoring, RUM data or ecommerce KPIs.
+This allows to create intelligent alarming setups based on your ELK data, no matter if it's gathered from infrastructure monitoring, RUM data, ecommerce KPIs or anything else.
 
 ## Getting started
 Just checkout the git repository and install the dependencies.
