@@ -1,0 +1,13 @@
+{
+  "name": "My testing config",
+  "info": "This config is meant to query some values and define min and max",
+  "query": {
+    "query": "*"
+  },
+  "min": 0,
+  "max": 10,
+  "tolerance": 14,
+  "reporters": {
+    "console": {}
+  }
+}
