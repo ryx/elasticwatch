@@ -1,10 +1,12 @@
 # elasticwatch v0.0.0
 
-Elasticwatch is a nifty tool that periodically queries an elasticsearch database and compares the results to a given expectation. If the results don't match the expectation a reporter is notified and can perform any kind of action (e.g. send an email to your dev team).
+Elasticwatch is a nifty tool that periodically queries an elasticsearch database and compares the results to a given expectation. If the results don't match the expectation a reporter is notified and can perform any kind of action (e.g. heat up the coffeemaker via IFTTT before sending an email to your dev team ;-) ...).
 
-This allows to create intelligent alarming setups based on your ELK data, no matter if it's gathered from infrastructure monitoring, RUM data, ecommerce KPIs or anything else.
+This allows to create intelligent alarming setups based on your ELK data, no matter if it's gathered from infrastructure monitoring, RUM data, ecommerce KPIs or anything else. No other tools needed.
 
 ## Getting started
+
+### Installation
 Just checkout the git repository and install the dependencies.
 ```
 git checkout https://github.com/ryx/elasticwatch.git
@@ -12,37 +14,42 @@ cd elasticwatch
 npm install
 ```
 
+### Prerequisites
 Create some data in your elasticsearch
 ```bash
 curl -s -XPUT 'http://localhost:9200/monitoring/rum/1' -d '{"requestTime":43,"responseTime":224,"renderTime":568}'
+curl -s -XPUT 'http://localhost:9200/monitoring/rum/2' -d '{"requestTime":49,"responseTime":312,"renderTime":619}'
+curl -s -XPUT 'http://localhost:9200/monitoring/rum/3' -d '{"requestTime":41,"responseTime":275,"renderTime":597}'
 ```
 
-Then create a simple configuration within the `config` dir.
+Then create a simple test configuration within the `tests` dir that raises an alarm when running over our previously inserted data.
 ```json
 {
-  "name": "My testing config",
-  "desc": "a very simple example for an elasticwatch configuration",
+  "name": "Simple testing config",
+  "info": "This config is meant to query some values and define min and max",
+  "index": "monitoring",
+  "type": "rum",
   "query": {
-    "query": "*"
+    "query_string": {
+      "query": "_exists_:renderTime",
+      "analyze_wildcard": true
+    }
   },
   "min": 0,
-  "max": 100,
-  "tolerance": 10,
+  "max": 10,
+  "tolerance": 14,
   "reporters": {
-    "console": {},
-    "email": {
-      "recipients": [
-        "bob@example.com",
-        "cindy@example.com"
-      ]
+    "console": {
+      "prefix": "Simple test"
     }
   }
 }
 ```
 
-Now run the application (*make sure you have a local elasticsearch instance up and running at the given location*)
+### Running elasticwatch
+Now run the application (*make sure you have an elasticsearch instance up and running at the given location*)
 ```
-bin/elasticwatch --elasticsearch-host=http://localhost:9200
+bin/elasticwatch --elasticsearch-url=http://localhost:9200
 ```
 
 ## Configuration

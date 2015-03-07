@@ -1,4 +1,5 @@
 http = require("http")
+Reporter =require("./reporter")
 
 ###*
 # The Worker does most of the magic. It takes a single test config, queries
@@ -9,9 +10,17 @@ module.exports = class Worker
 
   # prepare data, setup request options
   constructor: (@id, @config) ->
-    # @FIXME: validate config first
-    # instantiate required reporters
+    # @FIXME: validate config
     # ...
+    # instantiate requested reporters
+    @reporters = []
+    for name, cfg of @config.reporters
+      console.log("Worker(#{@id}).constructor: creating reporter: #{name}", cfg)
+      try
+        r = require("./reporters/#{name}")
+        @reporters.push(new r(cfg))
+      catch e
+        console.error("Worker(#{@id}).constructor: ERROR: failed to instantiate reporter #{name}", e)
     # build query data
     @data = JSON.stringify({query:@config.query})
     # create post options
@@ -24,7 +33,7 @@ module.exports = class Worker
         "Content-Type": "application/json"
         "Content-Length": Buffer.byteLength(@data)
 
-  # start working (executes request and hand over control to onRepsonse callback)
+  # start working (executes request and hands over control to onResponse callback)
   start: =>
     try
       @request = http.request(@options, @onResponse)
@@ -47,9 +56,12 @@ module.exports = class Worker
       response.on "end", (error) =>
         console.log("Worker(#{@id}).onResponse: response was: ", body)
         # evaluate results and compare them to expectation
-        # ...
+        # @TODO ...
         # if they don't match: raise alarms and notify reporters
-        # ...
+        if 1
+          for reporter in @reporters
+            console.log("Worker(#{@id}).onResponse: notifiying reporter ", reporter)
+            reporter.onAlarm(@, "Alarm condition met")
     else
       @request.end()
 

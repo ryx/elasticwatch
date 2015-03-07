@@ -1,5 +1,5 @@
 {
-  "name": "Simple testing config",
+  "name": "SimpleTest",
   "info": "This config is meant to query some values and define min and max",
   "index": "monitoring",
   "type": "rum",
@@ -13,6 +13,8 @@
   "max": 10,
   "tolerance": 14,
   "reporters": {
-    "console": {}
+    "console": {
+      "prefix": "Simple test"
+    }
   }
 }
