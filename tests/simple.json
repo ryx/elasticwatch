@@ -1,0 +1,35 @@
+{
+  "name": "SimpleTest",
+  "info": "This config is meant to query some values and define min and max",
+  "host": "localhost",
+  "port": "9200",
+  "index": "monitoring",
+  "type": "rum",
+  "query": {
+    "filtered": {
+      "query": {
+        "query_string": {
+          "query": "_exists_:renderTime",
+          "analyze_wildcard": true
+        }
+      },
+      "filter": {
+        "range" : {
+          "timestamp" : {
+            "gt" : "2015-03-06T12:00:00",
+            "lt" : "2015-03-07T00:00:00"
+          }
+        }
+      }
+    }
+  },
+  "fieldName": "renderTime",
+  "min": 0,
+  "max": 500,
+  "tolerance": 4,
+  "reporters": {
+    "console": {
+      "prefix": "Simple test"
+    }
+  }
+}

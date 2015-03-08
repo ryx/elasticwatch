@@ -15,12 +15,12 @@ module.exports = class Worker
     # instantiate requested reporters
     @reporters = []
     for name, cfg of @config.reporters
-      console.log("Worker(#{@id}).constructor: creating reporter: #{name}", cfg)
+      console.log("Worker(#{@id}).constructor: creating reporter: #{name}")
       try
         r = require("./reporters/#{name}")
         @reporters.push(new r(cfg))
       catch e
-        console.error("Worker(#{@id}).constructor: ERROR: failed to instantiate reporter #{name}", e)
+        console.error("Worker(#{@id}).constructor: ERROR: failed to instantiate reporter: #{name}", e)
     # build query data
     @data = JSON.stringify({query:@config.query})
     # create post options
@@ -44,6 +44,27 @@ module.exports = class Worker
     catch e
       console.error("Worker(#{@id}).start: unhandled error: ", e.message)
 
+  # test response and validate against expectation
+  validateResult: (data) =>
+    if not data
+      return false
+    else
+      consecutiveFails = 0
+      for hit in data.hits.hits
+        #console.log(hit)
+        val = hit._source[@config.fieldName]
+        console.log("Worker(#{@id}).validateResult: val #{val}")
+        # value out of range?
+        if val > @config.max or val < @config.min
+          console.log("Worker(#{@id}).validateResult: exceeds range")
+          consecutiveFails++
+        else
+          consecutiveFails = 0
+        # count number of fails
+        if consecutiveFails > @config.tolerance
+          return false
+    true
+
   # success callback
   onResponse: (response) =>
     console.log("Worker(#{@id}).onResponse: status is #{response.statusCode}")
@@ -56,9 +77,12 @@ module.exports = class Worker
       response.on "end", (error) =>
         console.log("Worker(#{@id}).onResponse: response was: ", body)
         # evaluate results and compare them to expectation
-        # @TODO ...
-        # if they don't match: raise alarms and notify reporters
-        if 1
+        try
+          data = JSON.parse(body)
+        catch e
+          console.error("Worker(#{@id}).onResponse: failed to parse response data")
+        if not @validateResult(data)
+          # if they don't match: raise alarms and notify reporters
           for reporter in @reporters
             console.log("Worker(#{@id}).onResponse: notifiying reporter ", reporter)
             reporter.onAlarm(@, "Alarm condition met")

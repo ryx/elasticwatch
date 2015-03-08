@@ -4,7 +4,7 @@ App = require("./app")
 # read args and pass correct configuration to App
 # ...
 opts =
-  tests: ["test.json", "error:/"]
+  tests: ["simple.json"]
 
 # start main logic
 new App(opts)

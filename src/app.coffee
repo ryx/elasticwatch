@@ -16,5 +16,7 @@ module.exports = class App
           cfg = require("../tests/#{test}")
           (new Worker("#{i}", cfg)).start()
         catch e
-          console.error(e)
-          console.error("App.constructor: ERROR: test #{test} not found")
+          if e.code is "MODULE_NOT_FOUND"
+            console.error("App.constructor: ERROR: test module '#{test}' not found")
+          else
+            console.error("App.constructor: ERROR: unhandled error", e)
