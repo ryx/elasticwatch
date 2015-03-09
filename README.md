@@ -1,8 +1,8 @@
-# elasticwatch v0.0.1
+# elasticwatch
 
 Elasticwatch is a nifty tool that queries an elasticsearch database and compares the results to a given expectation. If the results don't match the expectation a reporter is notified and can perform any kind of action (e.g. heat up the coffeemaker via IFTTT before sending an email to your dev team ;-) ...).
 
-This allows to create intelligent alarming setups based on your ELK data, no matter if it's gathered from infrastructure monitoring, RUM data, ecommerce KPIs or anything else. No other tools needed.
+This allows to create intelligent alarming setups based on your ELK data, no matter if it's gathered from infrastructure monitoring, RUM data, ecommerce KPIs or anything else. No other tools needed, if set up as a cronjob.
 
 ## Getting started
 
@@ -73,8 +73,17 @@ bin/elasticwatch --jobs=simple.json --host=localhost --port=9200
 ## Configuration
 The configuration files reside in the `config` directory as plain JSON files that may contain the following properties.
 
+### *name*
+A name of your choice to identify this job.
+
+### *info*
+Any kind of info that describes this job.
+
 ### *query*
-An elasticsearch query statement. Refer to the [elasticsearch documentation](http://www.elasticsearch.org/guide/en/elasticsearch/reference/current) for details about syntax and features.
+An elasticsearch query statement. Refer to the [elasticsearch documentation](http://www.elasticsearch.org/guide/en/elasticsearch/reference/current) for details about syntax and features. Should return a result set that contains the supplied *fieldName* to match against.
+
+### *fieldName*
+The name of the field to match the expectation against.
 
 ### *min*
 The minimum allowed value for all values within the query. If a series of values (as defined through the *tolerance* property) in the result is lower than this minimum an alarm is raised and reported.
