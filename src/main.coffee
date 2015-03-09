@@ -7,10 +7,10 @@ argv = require("yargs")
   .epilog("elasticwatch by Rico Pfaus | (c) 2015 | <ricopfaus@gmail.com>")
   .version () ->
     require("../package.json").version
-  .option "t",
-    alias : "tests"
+  .option "j",
+    alias : "jobs"
     demand: true
-    describe: "comma-separated list with test suites"
+    describe: "comma-separated list with jobs"
     type: "string"
   .option "h",
     alias : "host"
@@ -20,7 +20,7 @@ argv = require("yargs")
   .option "p",
     alias : "port"
     default: 9200
-    describe: "comma-separated list with test suites"
+    describe: "elasticsearch port"
     type: "number"
   .option "v",
     alias : "verbose"
@@ -30,7 +30,7 @@ argv = require("yargs")
 
 # read args and pass correct configuration to App
 opts =
-  tests: argv.tests?.split(',')
+  jobs: argv.jobs?.split(',')
   host: argv.host
   port: argv.port
 

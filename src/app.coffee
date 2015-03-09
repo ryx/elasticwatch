@@ -10,14 +10,16 @@ module.exports = class App
 
   constructor: (@config) ->
     # run over tests and create worker for each test
-    if @config.tests
-      for test, i in @config.tests
+    if @config.jobs
+      for job, i in @config.jobs
         # perform requests based on configs
         try
-          cfg = require("../tests/#{test}")
+          cfg = require("../jobs/#{job}")
           (new Worker("#{i}", @config.host, @config.port, cfg)).start()
         catch e
           if e.code is "MODULE_NOT_FOUND"
             log.error("App.constructor: ERROR: test module '#{test}' not found")
           else
             log.error("App.constructor: ERROR: unhandled error", e)
+    else
+      log.error("App.constructor: ERROR: no jobs defined")

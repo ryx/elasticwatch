@@ -1,6 +1,6 @@
 # elasticwatch v0.0.1
 
-Elasticwatch is a nifty tool that periodically queries an elasticsearch database and compares the results to a given expectation. If the results don't match the expectation a reporter is notified and can perform any kind of action (e.g. heat up the coffeemaker via IFTTT before sending an email to your dev team ;-) ...).
+Elasticwatch is a nifty tool that queries an elasticsearch database and compares the results to a given expectation. If the results don't match the expectation a reporter is notified and can perform any kind of action (e.g. heat up the coffeemaker via IFTTT before sending an email to your dev team ;-) ...).
 
 This allows to create intelligent alarming setups based on your ELK data, no matter if it's gathered from infrastructure monitoring, RUM data, ecommerce KPIs or anything else. No other tools needed.
 
@@ -28,10 +28,10 @@ curl -s -XPUT 'http://localhost:9200/monitoring/rum/6' -d '{"requestTime":43,"re
 Then create a simple test configuration within the `tests` dir that raises an alarm when running over our previously inserted data.
 ```json
 {
-  "name": "SimpleTest",
-  "info": "This config is meant to query some values and define min and max",
+  "name": "SimpleJob",
+  "info": "This job should demonstrate the basic principles of elasticwatch",
   "host": "localhost",
-  "port": "9200",
+  "port": 9200,
   "index": "monitoring",
   "type": "rum",
   "query": {
@@ -67,7 +67,7 @@ Then create a simple test configuration within the `tests` dir that raises an al
 ### Running elasticwatch
 Now run the application (*make sure you have an elasticsearch instance up and running at the given location*)
 ```
-bin/elasticwatch --tests=simple.json --host=localhost --port=9200
+bin/elasticwatch --jobs=simple.json --host=localhost --port=9200
 ```
 
 ## Configuration
@@ -88,11 +88,19 @@ If a queried series of values exceeds either *min* or *max* for *tolerance*+1 ti
 ## Reporters
 
 ### About reporters
-By default elasticwatch does nothing more than executing its configured actions, raising alarms if expectations aren't met. If you want to perform any action in such case, you have to define a reporter.
+By default elasticwatch does nothing more than executing its configured jobs, raising alarms if expectations aren't met. If you want to perform any action in such case, you have to define a reporter.
 
 To put it simple - reporters are notified about alarms, which means a configured expectation isn't met for a given number of times. They can then do helpful things depending on their type like sending an email, creating a ticket in your ticket system, etc.
 
-Reporters a defined inside the config, you can set either one or multiple of them. Most reporters need a specific configuration that is based on the reporter type and defined as a JSON string. See section [Configuration](#configuration) for an example reporter config.
+Reporters are defined inside a job's config, you can set either one or multiple of them. Most reporters need a specific configuration that is based on the reporter type and defined as a JSON string.
+
+### Available reporters
+
+#### ConsoleReporter
+The ConsoleReporter is just meant for demonstration purpose and simply logs a message to the console.
+
+#### EMailReporter
+TODO
 
 ### Custom reporters
-You can create custom reporters by creating a new class that extends the `Reporter` class (see [ConsoleReporter](master/reporters/ConsoleReporter.coffee) for an example).
+You can create custom reporters by creating a new class that extends the `Reporter` class (see [ConsoleReporter](reporters/ConsoleReporter.coffee) for an example).
