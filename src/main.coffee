@@ -1,16 +1,31 @@
 App = require("./app")
-pkg = require("../package.json")
 log = require("loglevel")
 
 # init commandline options
 argv = require("yargs")
-  .usage("Usage: $0 --tests=[test1[,test2,...]] --host=[elasticsearch_host] --port=[elasticsearch_port] [options]")
-  .describe("tests", "comma-separated list with test suites")
-  .describe("host", "elasticsearch host")
-  .describe("port", "elasticsearch port")
-  .describe("verbose", "Show additional output")
-  .demand(["tests", "host", "port"])
-  .epilog("elasticwatch v#{pkg.version} | (c) 2015 Rico Pfaus")
+  .usage("Usage: $0 --tests=[test1[,test2,...]] [options]")
+  .epilog("elasticwatch by Rico Pfaus | (c) 2015 | <ricopfaus@gmail.com>")
+  .version () ->
+    require("../package.json").version
+  .option "t",
+    alias : "tests"
+    demand: true
+    describe: "comma-separated list with test suites"
+    type: "string"
+  .option "h",
+    alias : "host"
+    default: "localhost"
+    describe: "elasticsearch host"
+    type: "string"
+  .option "p",
+    alias : "port"
+    default: 9200
+    describe: "comma-separated list with test suites"
+    type: "number"
+  .option "v",
+    alias : "verbose"
+    describe: "show additional output"
+    type: "boolean"
   .argv
 
 # read args and pass correct configuration to App
