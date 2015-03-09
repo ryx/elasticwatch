@@ -66,9 +66,16 @@ module.exports = class Worker
           return false
     true
 
+  # raise alarm and notify all configured reporters
+  raiseAlarm: (message) =>
+    # if they don't match: raise alarms and notify reporters
+    for reporter in @reporters
+      log.debug("Worker(#{@id}).raiseAlarm: notifiying reporter ", reporter)
+      reporter.onAlarm(@, message)
+
   # success callback
   onResponse: (response) =>
-    console.log("Worker(#{@id}).onResponse: status is #{response.statusCode}")
+    log.debug("Worker(#{@id}).onResponse: status is #{response.statusCode}")
     # if we have a success code
     if response.statusCode is 200
       body = ""
@@ -76,24 +83,30 @@ module.exports = class Worker
       response.on "data", (chunk) =>
         body += chunk
       response.on "end", (error) =>
-        console.log("Worker(#{@id}).onResponse: response was: ", body)
+        log.debug("Worker(#{@id}).onResponse: response was: ", body)
         # evaluate results and compare them to expectation
         try
           data = JSON.parse(body)
         catch e
-          console.error("Worker(#{@id}).onResponse: failed to parse response data")
+          log.error("Worker(#{@id}).onResponse: failed to parse response data")
+        # check number of results and raise error on empty query
+        numHits = data.hits.total
+        if numHits is 0
+          @raiseAlarm("No results received")
+          process.exitCode = 3
+        log.debug("Worker(#{@id}).onResponse: query returned #{numHits} hits")
+        # if expectations are not met, raise error
         if not @validateResult(data)
-          # if they don't match: raise alarms and notify reporters
-          for reporter in @reporters
-            console.log("Worker(#{@id}).onResponse: notifiying reporter ", reporter)
-            reporter.onAlarm(@, "Alarm condition met")
+          @raiseAlarm("Alarm condition met")
+          process.exit = 2
     else
       @request.end()
+      process.exit(1)
 
   # error handling callback
   onError: (error) =>
     if error.code is "ECONNREFUSED"
-      console.error("ERROR: connection refused, please make sure elasticsearch is running and accessible under #{@options.host}:#{@options.port}")
+      log.error("ERROR: connection refused, please make sure elasticsearch is running and accessible under #{@options.host}:#{@options.port}")
     else
-      console.log("Worker(#{@id}).onError: unhandled error: ", error)
+      log.debug("Worker(#{@id}).onError: unhandled error: ", error)
     @request.end()
