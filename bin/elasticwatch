@@ -1,2 +1,2 @@
 #!/bin/bash
-node_modules/.bin/coffee src/main.coffee $*
+coffee src/main.coffee $*
