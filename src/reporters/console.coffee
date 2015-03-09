@@ -9,7 +9,6 @@ module.exports = class ConsoleReporter extends Reporter
 
   constructor: (@config) ->
     log.debug("ConsoleReporter.constructor: creating new instance", @config)
-    @prefix = @config?.prefix or "ConsoleReporter.onAlarm"
 
   onAlarm: (test, message) ->
-    log.error("#{@prefix}: Test with name #{test.name} failed with alarm: #{message}")
+    log.error("ConsoleReporter.onAlarm: '#{test.name}' raised alarm: #{message}")

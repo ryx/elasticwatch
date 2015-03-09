@@ -28,8 +28,6 @@
   "max": 500,
   "tolerance": 4,
   "reporters": {
-    "console": {
-      "prefix": "Simple test"
-    }
+    "console": {}
   }
 }

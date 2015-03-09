@@ -2,8 +2,6 @@ log = require("loglevel")
 http = require("http")
 Reporter =require("./reporter")
 
-log.debug(log)
-
 ###*
 # The Worker does most of the magic. It takes a single test config, queries
 # data from elasticsearch, analyzes the result, compares it to the expectation,
@@ -74,7 +72,7 @@ module.exports = class Worker
     # if they don't match: raise alarms and notify reporters
     for reporter in @reporters
       log.debug("Worker(#{@id}).raiseAlarm: notifiying reporter ", reporter)
-      reporter.onAlarm(@, message)
+      reporter.onAlarm(@config, message)
 
   # success callback
   onResponse: (response) =>
