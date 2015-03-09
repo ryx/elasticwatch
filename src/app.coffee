@@ -1,3 +1,4 @@
+log = require("loglevel")
 http = require("http")
 Worker = require("./worker")
 
@@ -17,6 +18,6 @@ module.exports = class App
           (new Worker("#{i}", @config.host, @config.port, cfg)).start()
         catch e
           if e.code is "MODULE_NOT_FOUND"
-            console.error("App.constructor: ERROR: test module '#{test}' not found")
+            log.error("App.constructor: ERROR: test module '#{test}' not found")
           else
-            console.error("App.constructor: ERROR: unhandled error", e)
+            log.error("App.constructor: ERROR: unhandled error", e)

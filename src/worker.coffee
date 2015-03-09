@@ -1,5 +1,8 @@
+log = require("loglevel")
 http = require("http")
 Reporter =require("./reporter")
+
+log.debug(log)
 
 ###*
 # The Worker does most of the magic. It takes a single test config, queries
@@ -15,12 +18,12 @@ module.exports = class Worker
     # instantiate requested reporters
     @reporters = []
     for name, cfg of @config.reporters
-      console.log("Worker(#{@id}).constructor: creating reporter: #{name}")
+      log.debug("Worker(#{@id}).constructor: creating reporter: #{name}")
       try
         r = require("./reporters/#{name}")
         @reporters.push(new r(cfg))
       catch e
-        console.error("Worker(#{@id}).constructor: ERROR: failed to instantiate reporter: #{name}", e)
+        log.error("Worker(#{@id}).constructor: ERROR: failed to instantiate reporter: #{name}", e)
     # build query data
     @data = JSON.stringify({query:@config.query})
     # create post options
@@ -35,15 +38,15 @@ module.exports = class Worker
 
   # start working (executes request and hands over control to onResponse callback)
   start: =>
-    console.log("Worker(#{@id}).start: connecting to elasticsearch at: ", @options.host, @options.port)
+    log.debug("Worker(#{@id}).start: connecting to elasticsearch at: ", @options.host, @options.port)
     try
       @request = http.request(@options, @onResponse)
       @request.on("error", @onError)
-      console.log("Worker(#{@id}).start: query data is: ", @data)
+      log.debug("Worker(#{@id}).start: query data is: ", @data)
       @request.write(@data)
       @request.end()
     catch e
-      console.error("Worker(#{@id}).start: unhandled error: ", e.message)
+      log.error("Worker(#{@id}).start: unhandled error: ", e.message)
 
   # test response and validate against expectation
   validateResult: (data) =>
@@ -52,12 +55,12 @@ module.exports = class Worker
     else
       consecutiveFails = 0
       for hit in data.hits.hits
-        #console.log(hit)
+        #log.debug(hit)
         val = hit._source[@config.fieldName]
-        console.log("Worker(#{@id}).validateResult: val #{val}")
+        log.debug("Worker(#{@id}).validateResult: val #{val}")
         # value out of range?
         if val > @config.max or val < @config.min
-          console.log("Worker(#{@id}).validateResult: exceeds range")
+          log.debug("Worker(#{@id}).validateResult: exceeds range")
           consecutiveFails++
         else
           consecutiveFails = 0

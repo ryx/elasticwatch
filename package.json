@@ -1,14 +1,22 @@
 {
-  "version": "0.0.1",
   "name": "elasticwatch",
+  "version": "0.0.1",
   "description": "watch/report/alarm tool for elasticsearch",
-  "author": "ricopfaus@gmail.com",
+  "author": "Rico Pfaus <ricopfaus@gmail.com>",
+  "bin": {
+    "elasticwatch": "./bin/elasticwatch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ryx/elasticwatch"
+  },
   "dependencies": {
-    "coffee-script": "^1.8.0",
+    "loglevel": "^1.2.0",
     "yargs": "^3.4.5"
   },
   "devDependencies": {},
   "engines": {
     "node": ">=0.8.0"
-  }
+  },
+  "license": "MIT"
 }

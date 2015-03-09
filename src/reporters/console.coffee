@@ -1,3 +1,4 @@
+log = require("loglevel")
 Reporter = require("../reporter")
 
 ###*
@@ -7,8 +8,8 @@ Reporter = require("../reporter")
 module.exports = class ConsoleReporter extends Reporter
 
   constructor: (@config) ->
-    console.log("ConsoleReporter.constructor: creating new instance", @config)
+    log.debug("ConsoleReporter.constructor: creating new instance", @config)
     @prefix = @config?.prefix or "ConsoleReporter.onAlarm"
 
   onAlarm: (test, message) ->
-    console.error("#{@prefix}: Test with name #{test.name} failed with alarm: #{message}")
+    log.error("#{@prefix}: Test with name #{test.name} failed with alarm: #{message}")
