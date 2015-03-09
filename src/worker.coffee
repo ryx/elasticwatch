@@ -9,7 +9,7 @@ Reporter =require("./reporter")
 module.exports = class Worker
 
   # prepare data, setup request options
-  constructor: (@id, @config) ->
+  constructor: (@id, @host, @port, @config) ->
     # @FIXME: validate config
     # ...
     # instantiate requested reporters
@@ -25,8 +25,8 @@ module.exports = class Worker
     @data = JSON.stringify({query:@config.query})
     # create post options
     @options =
-      host: "localhost" # @FIXME use global config here
-      port: "9200" # @FIXME use global config here
+      host: @host
+      port: @port
       path: "/#{@config.index}/#{@config.type}/_search"
       method: "POST"
       headers:
@@ -35,6 +35,7 @@ module.exports = class Worker
 
   # start working (executes request and hands over control to onResponse callback)
   start: =>
+    console.log("Worker(#{@id}).start: connecting to elasticsearch at: ", @options.host, @options.port)
     try
       @request = http.request(@options, @onResponse)
       @request.on("error", @onError)

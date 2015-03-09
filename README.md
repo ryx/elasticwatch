@@ -1,4 +1,4 @@
-# elasticwatch v0.0.0
+# elasticwatch v0.0.1
 
 Elasticwatch is a nifty tool that periodically queries an elasticsearch database and compares the results to a given expectation. If the results don't match the expectation a reporter is notified and can perform any kind of action (e.g. heat up the coffeemaker via IFTTT before sending an email to your dev team ;-) ...).
 
@@ -28,19 +28,34 @@ curl -s -XPUT 'http://localhost:9200/monitoring/rum/6' -d '{"requestTime":43,"re
 Then create a simple test configuration within the `tests` dir that raises an alarm when running over our previously inserted data.
 ```json
 {
-  "name": "Simple testing config",
+  "name": "SimpleTest",
   "info": "This config is meant to query some values and define min and max",
+  "host": "localhost",
+  "port": "9200",
   "index": "monitoring",
   "type": "rum",
   "query": {
-    "query_string": {
-      "query": "_exists_:renderTime",
-      "analyze_wildcard": true
+    "filtered": {
+      "query": {
+        "query_string": {
+          "query": "_exists_:renderTime",
+          "analyze_wildcard": true
+        }
+      },
+      "filter": {
+        "range" : {
+          "timestamp" : {
+            "gt" : "2015-03-06T12:00:00",
+            "lt" : "2015-03-07T00:00:00"
+          }
+        }
+      }
     }
   },
+  "fieldName": "renderTime",
   "min": 0,
-  "max": 10,
-  "tolerance": 14,
+  "max": 500,
+  "tolerance": 4,
   "reporters": {
     "console": {
       "prefix": "Simple test"
@@ -52,7 +67,7 @@ Then create a simple test configuration within the `tests` dir that raises an al
 ### Running elasticwatch
 Now run the application (*make sure you have an elasticsearch instance up and running at the given location*)
 ```
-bin/elasticwatch --elasticsearch-url=http://localhost:9200
+bin/elasticwatch --tests=simple.json --host=localhost --port=9200
 ```
 
 ## Configuration
@@ -80,4 +95,4 @@ To put it simple - reporters are notified about alarms, which means a configured
 Reporters a defined inside the config, you can set either one or multiple of them. Most reporters need a specific configuration that is based on the reporter type and defined as a JSON string. See section [Configuration](#configuration) for an example reporter config.
 
 ### Custom reporters
-You can create custom reporters by creating a new class that extends `EWReporter` from the `core` module.
+You can create custom reporters by creating a new class that extends the `Reporter` class (see [ConsoleReporter](master/reporters/ConsoleReporter.coffee) for an example).

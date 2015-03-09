@@ -14,7 +14,7 @@ module.exports = class App
         # perform requests based on configs
         try
           cfg = require("../tests/#{test}")
-          (new Worker("#{i}", cfg)).start()
+          (new Worker("#{i}", @config.host, @config.port, cfg)).start()
         catch e
           if e.code is "MODULE_NOT_FOUND"
             console.error("App.constructor: ERROR: test module '#{test}' not found")
