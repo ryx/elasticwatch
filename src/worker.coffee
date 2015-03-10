@@ -11,19 +11,15 @@ module.exports = class Worker
 
   # prepare data, setup request options
   constructor: (@id, @config) ->
-    # @FIXME: validate config
+    # @TODO: validate config
     # ...
     # instantiate requested reporters
-    @reporters = []
-    for name, cfg of @config.reporters
-      log.debug("Worker(#{@id}).constructor: creating reporter: #{name}")
-      try
-        r = require("./reporters/#{name}")
-        @reporters.push(new r(cfg))
-      catch e
-        log.error("Worker(#{@id}).constructor: ERROR: failed to instantiate reporter: #{name}", e)
+    @reporters = @createReporters(@config.reporters)
+
+  # start working (executes request and hands over control to onResponse callback)
+  start: =>
     # build query data
-    @data = JSON.stringify({query:@config.query})
+    data = JSON.stringify({query:@config.query})
     # create post options
     @options =
       host: @config.elasticsearch.host
@@ -32,19 +28,29 @@ module.exports = class Worker
       method: "POST"
       headers:
         "Content-Type": "application/json"
-        "Content-Length": Buffer.byteLength(@data)
-
-  # start working (executes request and hands over control to onResponse callback)
-  start: =>
+        "Content-Length": Buffer.byteLength(data)
+    # connect
     log.debug("Worker(#{@id}).start: connecting to elasticsearch at: ", @options.host, @options.port)
     try
       @request = http.request(@options, @onResponse)
       @request.on("error", @onError)
-      log.debug("Worker(#{@id}).start: query data is: ", @data)
-      @request.write(@data)
+      log.debug("Worker(#{@id}).start: query data is: ", data)
+      @request.write(data)
       @request.end()
     catch e
       log.error("Worker(#{@id}).start: unhandled error: ", e.message)
+
+  # instantiate the required reporters
+  createReporters: (configs) =>
+    reporters = []
+    for name, cfg of configs
+      log.debug("Worker(#{@id}).createReporters: creating reporter: #{name}")
+      try
+        r = require("./reporters/#{name}")
+        reporters.push(new r(cfg))
+      catch e
+        log.error("Worker(#{@id}).createReporters: ERROR: failed to instantiate reporter: #{name}", e)
+    reporters
 
   # test response and validate against expectation
   validateResult: (data) =>
