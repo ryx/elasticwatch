@@ -8,7 +8,7 @@ This allows to create intelligent alarming setups based on your ELK data, no mat
 
 First clone the git repository and install the dependencies.
 ```
-git checkout https://github.com/ryx/elasticwatch.git
+git clone https://github.com/ryx/elasticwatch.git
 cd elasticwatch
 npm install
 ```
@@ -29,7 +29,7 @@ bin/elasticwatch --jobs=jobs/example.json
 ```
 
 ## Jobs
-Jobs are files that tell elasticwatch what to do. This includes: where to find the db host, what data to query from the database, which target values to compare the data to and what to to when alarm conditions are met.
+Jobs are files that tell elasticwatch what to do. This includes: where to find the db host, what data to query from the database, which target values to compare the data to and what to do when alarm conditions are met.
 
 The job configuration files reside in the `jobs` directory as plain JSON files that may contain the following properties. Check the `example.json` for a basic example.
 
