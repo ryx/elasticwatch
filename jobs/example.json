@@ -1,10 +1,12 @@
 {
   "name": "SimpleTest",
   "info": "This config is meant to query some values and define min and max",
-  "host": "localhost",
-  "port": "9200",
-  "index": "monitoring",
-  "type": "rum",
+  "elasticsearch": {
+    "host": "localhost",
+    "port": "9200",
+    "index": "monitoring",
+    "type": "rum"
+  },
   "query": {
     "filtered": {
       "query": {

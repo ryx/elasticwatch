@@ -10,7 +10,7 @@ Reporter =require("./reporter")
 module.exports = class Worker
 
   # prepare data, setup request options
-  constructor: (@id, @host, @port, @config) ->
+  constructor: (@id, @config) ->
     # @FIXME: validate config
     # ...
     # instantiate requested reporters
@@ -26,9 +26,9 @@ module.exports = class Worker
     @data = JSON.stringify({query:@config.query})
     # create post options
     @options =
-      host: @host
-      port: @port
-      path: "/#{@config.index}/#{@config.type}/_search"
+      host: @config.elasticsearch.host
+      port: @config.elasticsearch.port
+      path: "/#{@config.elasticsearch.index}/#{@config.elasticsearch.type}/_search"
       method: "POST"
       headers:
         "Content-Type": "application/json"

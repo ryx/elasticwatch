@@ -14,11 +14,11 @@ module.exports = class App
       for job, i in @config.jobs
         # perform requests based on configs
         try
-          cfg = require("../jobs/#{job}")
-          (new Worker("#{i}", @config.host, @config.port, cfg)).start()
+          cfg = require("../#{job}")
+          (new Worker("#{i}", cfg)).start()
         catch e
           if e.code is "MODULE_NOT_FOUND"
-            log.error("App.constructor: ERROR: test module '#{test}' not found")
+            log.error("App.constructor: ERROR: job module '#{job}' not found")
           else
             log.error("App.constructor: ERROR: unhandled error", e)
     else

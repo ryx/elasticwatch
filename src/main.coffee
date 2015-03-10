@@ -12,16 +12,6 @@ argv = require("yargs")
     demand: true
     describe: "comma-separated list with jobs"
     type: "string"
-  .option "h",
-    alias : "host"
-    default: "localhost"
-    describe: "elasticsearch host"
-    type: "string"
-  .option "p",
-    alias : "port"
-    default: 9200
-    describe: "elasticsearch port"
-    type: "number"
   .option "v",
     alias : "verbose"
     describe: "show additional output"
@@ -31,8 +21,6 @@ argv = require("yargs")
 # read args and pass correct configuration to App
 opts =
   jobs: argv.jobs?.split(',')
-  host: argv.host
-  port: argv.port
 
 # set loglevel
 log.setLevel(if argv.verbose then 1 else 4)
