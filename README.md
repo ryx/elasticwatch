@@ -31,7 +31,7 @@ bin/elasticwatch --jobs=jobs/example.json
 ## Jobs
 Jobs are files that tell elasticwatch what to do. This includes: where to find the db host, what data to query from the database, which target values to compare the data to and what to do when alarm conditions are met.
 
-The job configuration files reside in the `jobs` directory as plain JSON files that may contain the following properties. Check the `example.json` for a basic example.
+The job configuration files reside in the `jobs` directory as plain JSON files that may contain the following properties. Check the [example.json](jobs/example.json) for a basic example.
 
 ### *name (required)*
 A name of your choice to identify this job.
@@ -79,4 +79,4 @@ The ConsoleReporter is just meant for demonstration purpose and simply logs a me
 TODO
 
 ### Custom reporters
-You can create custom reporters by creating a new class that extends the `Reporter` class (see [ConsoleReporter](src/reporters/ConsoleReporter.coffee) for an example).
+You can create custom reporters by creating a new class that extends the `Reporter` class (see [ConsoleReporter](src/reporters/console.coffee) for an example).
