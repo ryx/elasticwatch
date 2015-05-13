@@ -63,7 +63,7 @@ module.exports = class Worker
         val = hit._source[@config.fieldName]
         log.debug("Worker(#{@id}).validateResult: val #{val}")
         # value out of range?
-        if val > @config.max or val < @config.min
+        if (@config.max and val > @config.max) or (@config.min and val < @config.min)
           log.debug("Worker(#{@id}).validateResult: exceeds range")
           consecutiveFails++
         else
