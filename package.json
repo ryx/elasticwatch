@@ -1,6 +1,6 @@
 {
   "name": "elasticwatch",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "watch/report/alarm tool for elasticsearch",
   "author": "Rico Pfaus <ricopfaus@gmail.com>",
   "bin": {
@@ -11,12 +11,20 @@
     "url": "https://github.com/ryx/elasticwatch"
   },
   "dependencies": {
+    "coffee-script": "^1.9.1",
     "loglevel": "^1.2.0",
     "yargs": "^3.4.5"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "chai": "^2.1.1",
+    "mocha": "^2.2.1",
+    "mockery": "^1.4.0"
+  },
   "engines": {
     "node": ">=0.8.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "test": "mocha --compilers coffee:coffee-script/register"
+  }
 }
