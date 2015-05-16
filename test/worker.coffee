@@ -32,14 +32,17 @@ describe "Worker", ->
 
   describe "constructor", ->
 
+    it "should have the assigned id", ->
+      assert.equal(new Worker("testworker", {}).id, "testworker", "id property should equal the constructor's first argument")
+
     it "should break on empty config", ->
       init = ->
         new Worker("testworker")
-      assert.throw(init, Error, "no config supplied")
+      assert.throw(init, Error, "no config supplied", "constructor should get a config object as second argument")
 
     it "should instantiate reporter(s) if config.reporters is set", ->
       worker = new Worker("testworker", {reporters:{"console":{}}})
-      assert.isArray(worker.reporters)
+      assert.isArray(worker.reporters, "@reporters should be an Array")
 
   describe "reporters", ->
 
