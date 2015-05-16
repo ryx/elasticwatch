@@ -9,14 +9,22 @@ Reporter =require("./reporter")
 ###
 module.exports = class Worker
 
-  # prepare data, setup request options
+  ###*
+  # Create a new Worker, prepare data, setup request options.
+  # @constructor
+  # @param  id  {String}  identifies this individual Worker instance
+  # @param  config  {Object}  configuration object as supplied via Job config
+  ###
   constructor: (@id, @config) ->
     if not @config
       throw new Error("no config supplied")
     # instantiate requested reporters
     @reporters = @createReporters(@config.reporters)
 
-  # start working (executes request and hands over control to onResponse callback)
+  ###*
+  # Execute request and hand over control to onResponse callback.
+  # @method start
+  ###
   start: =>
     # build query data
     data = JSON.stringify({query:@config.query})
@@ -30,7 +38,7 @@ module.exports = class Worker
         "Content-Type": "application/json"
         "Content-Length": Buffer.byteLength(data)
     # connect
-    log.debug("Worker(#{@id}).start: connecting to elasticsearch at: ", @options.host, @options.port)
+    log.debug("Worker(#{@id}).start: connecting to elasticsearch at: #{@options.host}:#{@options.port}#{@options.path}")
     try
       @request = http.request(@options, @onResponse)
       @request.on("error", @onError)
@@ -40,7 +48,11 @@ module.exports = class Worker
     catch e
       log.error("Worker(#{@id}).start: unhandled error: ", e.message)
 
-  # instantiate the required reporters
+  ###*
+  # Instantiate reporters according to a given configuration.
+  # @method createReporters
+  # @param  configs  {Object} hash with configuration objects (key=reporter id, value=configuration)
+  ###
   createReporters: (configs) =>
     reporters = []
     for name, cfg of configs
@@ -52,7 +64,28 @@ module.exports = class Worker
         log.error("Worker(#{@id}).createReporters: ERROR: failed to instantiate reporter: #{name}", e)
     reporters
 
-  # test response and validate against expectation
+  ###*
+  # Gets passed ES response data (as object)
+  # @method handleResponseData
+  # @param  data  {Object}  result set as returned by ES
+  ###
+  handleResponseData: (data) ->
+    # check number of results and raise error on empty query
+    numHits = data.hits.total
+    if numHits is 0
+      @raiseAlarm("No results received")
+      process.exitCode = 3
+    log.debug("Worker(#{@id}).onResponse: query returned #{numHits} hits")
+    # if expectations are not met, raise error
+    if not @validateResult(data)
+      @raiseAlarm("Alarm condition met")
+      process.exit = 2
+
+  ###
+  # Test response and validate against expectation
+  # @method validateResult
+  # @param  data  {Object}
+  ###
   validateResult: (data) =>
     if not data
       return false
@@ -73,14 +106,20 @@ module.exports = class Worker
           return false
     true
 
-  # raise alarm and notify all configured reporters
+  ###*
+  # Raise alarm and notify all configured reporters.
+  # @method raiseAlarm
+  # @param  message {String}
+  ###
   raiseAlarm: (message) =>
     # if they don't match: raise alarms and notify reporters
     for reporter in @reporters
       log.debug("Worker(#{@id}).raiseAlarm: notifiying reporter ", reporter)
       reporter.onAlarm(@config, message)
 
-  # success callback
+  ###*
+  # http.request: success callback
+  ###
   onResponse: (response) =>
     log.debug("Worker(#{@id}).onResponse: status is #{response.statusCode}")
     # if we have a success code
@@ -93,24 +132,16 @@ module.exports = class Worker
         log.debug("Worker(#{@id}).onResponse: response was: ", body)
         # evaluate results and compare them to expectation
         try
-          data = JSON.parse(body)
+          @handleResponseData(JSON.parse(body))
         catch e
           log.error("Worker(#{@id}).onResponse: failed to parse response data")
-        # check number of results and raise error on empty query
-        numHits = data.hits.total
-        if numHits is 0
-          @raiseAlarm("No results received")
-          process.exitCode = 3
-        log.debug("Worker(#{@id}).onResponse: query returned #{numHits} hits")
-        # if expectations are not met, raise error
-        if not @validateResult(data)
-          @raiseAlarm("Alarm condition met")
-          process.exit = 2
     else
       @request.end()
       process.exit(1)
 
-  # error handling callback
+  ###*
+  # http.request: error callback
+  ###
   onError: (error) =>
     if error.code is "ECONNREFUSED"
       log.error("ERROR: connection refused, please make sure elasticsearch is running and accessible under #{@options.host}:#{@options.port}")
