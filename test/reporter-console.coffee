@@ -37,5 +37,5 @@ describe "ConsoleReporter", ->
       assert.include(loglevelMock.strDebug, "creating new instance")
 
     it "should log an error when an alarm signal is caught", ->
-      reporter.onAlarm("myname", "mymessage")
+      reporter.onAlarm({name:"myname"}, "mymessage")
       assert.include(loglevelMock.strError, "'myname' raised alarm: mymessage")
