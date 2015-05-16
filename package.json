@@ -3,6 +3,12 @@
   "version": "0.0.2",
   "description": "watch/report/alarm tool for elasticsearch",
   "author": "Rico Pfaus <ricopfaus@gmail.com>",
+  "keywords": [
+    "elasticsearch",
+    "alarming",
+    "monitoring",
+    "notification"
+  ],
   "bin": {
     "elasticwatch": "./bin/elasticwatch"
   },
