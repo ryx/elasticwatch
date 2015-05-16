@@ -11,7 +11,6 @@ module.exports = class Worker
 
   # prepare data, setup request options
   constructor: (@id, @config) ->
-    # @TODO: validate config
     if not @config
       throw new Error("no config supplied")
     # instantiate requested reporters

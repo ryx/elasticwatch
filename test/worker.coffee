@@ -26,22 +26,26 @@ mockery.registerMock("http", httpMock)
 
 # load module to be tested
 Worker = require("../src/worker")
+ConsoleReporter = require("../src/reporters/console")
 
 describe "Worker", ->
 
   describe "constructor", ->
 
-    beforeEach ->
-      worker = new Worker("testworker", {})
-
     it "should break on empty config", ->
       init = ->
-        new Worker("testworker", {})
-      assert.throw(init, Error, "bloo")
+        new Worker("testworker")
+      assert.throw(init, Error, "no config supplied")
+
+    it "should instantiate reporter(s) if config.reporters is set", ->
+      worker = new Worker("testworker", {reporters:{"console":{}}})
+      assert.isArray(worker.reporters)
 
   describe "reporters", ->
 
-    it "should instantiate a reporter if config.reporters is set", ->
-      worker = new Worker("testworker", {reporters:{"console":{}}})
-      assert.notNull(worker.reporters)
-      assert.true(worker.reporters[0].instanceof ConsoleReporter)
+    beforeEach ->
+      worker = new Worker("testworker", {})
+
+    it "createReporters should take a hash with configs and return an array with Reporter objects", ->
+      reporters = worker.createReporters({console:{}})
+      assert.instanceOf(reporters[0], ConsoleReporter, "first entry in reporters list should be a ConsoleReporter")
