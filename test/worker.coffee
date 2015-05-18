@@ -12,7 +12,7 @@ loglevelMock =
   error: (str) ->
     @strError = str
 httpMock =
-  request: () ->
+  request: (opts, callback) ->
 
 # setup mockery
 mockery.enable({
@@ -43,6 +43,33 @@ describe "Worker", ->
     it "should instantiate reporter(s) if config.reporters is set", ->
       worker = new Worker("testworker", {reporters:{"console":{}}})
       assert.isArray(worker.reporters, "@reporters should be an Array")
+
+  describe "start", ->
+
+    beforeEach ->
+      worker = new Worker("testworker", {})
+
+    #it "should create a correct query string", ->
+    #  worker = new Worker("testworker", {})
+    #  func = ->
+    #    worker.start()
+    #  assert.throw(func, Error, "failed to parse query")
+
+    #it "should break on invalid query data", ->
+
+  describe "sendESRequest", ->
+
+    beforeEach ->
+      worker = new Worker("testworker", {})
+
+    it "should break if any parameter is missing or null", ->
+      assert.isFalse(worker.sendESRequest(null, 9200, "/index/type", {foo:"bar"}))
+      assert.isFalse(worker.sendESRequest("myhost", null, "/index/type", {foo:"bar"}))
+      assert.isFalse(worker.sendESRequest("myhost", 9200, null, {foo:"bar"}))
+      assert.isFalse(worker.sendESRequest("myhost", 9200, "/index/type", null))
+
+    it "should send a successful request if all data is available", ->
+      worker.sendESRequest("myhost", "9200", "/index/type", {foo:"bar"})
 
   describe "reporters", ->
 

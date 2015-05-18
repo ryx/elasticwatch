@@ -26,27 +26,53 @@ module.exports = class Worker
   # @method start
   ###
   start: =>
-    # build query data
-    data = JSON.stringify({query:@config.query})
+    # build query data and throw error on invalid data
+    try
+      data = JSON.stringify({query:@config.query})
+    catch
+      log.error("Worker(#{@id}).start: failed to parse query data: ", e.message)
+      return false
+    # send data
+    @sendESRequest(
+      @config.elasticsearch.host,
+      @config.elasticsearch.port,
+      "/#{@config.elasticsearch.index}/#{@config.elasticsearch.type}",
+      JSON.stringify({query:@config.query}),
+      data
+    )
+
+  ###*
+  # Establish a connection and send a request to elasticsearch
+  # @method sendESRequest
+  # @param  host  {String}  ES host
+  # @param  port  {String}  ES port
+  # @param  path  {String}  ES path (e.g. /index/type)
+  # @param  data  {String}  ES query data as stringified JSON
+  ###
+  sendESRequest: (host, port, path, data) ->
+    if not host or not port or not path or not data
+      return false
     # create post options
     @options =
-      host: @config.elasticsearch.host
-      port: @config.elasticsearch.port
-      path: "/#{@config.elasticsearch.index}/#{@config.elasticsearch.type}/_search"
+      host: host
+      port: port
+      path: "#{path}/_search"
       method: "POST"
       headers:
         "Content-Type": "application/json"
         "Content-Length": Buffer.byteLength(data)
     # connect
-    log.debug("Worker(#{@id}).start: connecting to elasticsearch at: #{@options.host}:#{@options.port}#{@options.path}")
+    log.debug("Worker(#{@id}).sendESRequest: connecting to elasticsearch at: #{@host}:#{@port}#{@path}")
     try
       @request = http.request(@options, @onResponse)
       @request.on("error", @onError)
-      log.debug("Worker(#{@id}).start: query data is: ", data)
+      log.debug("Worker(#{@id}).sendESRequest: query data is: ", data)
       @request.write(data)
       @request.end()
+      return true
     catch e
-      log.error("Worker(#{@id}).start: unhandled error: ", e.message)
+      log.error("Worker(#{@id}).sendESRequest: unhandled error: ", e.message)
+      return false
 
   ###*
   # Instantiate reporters according to a given configuration.
