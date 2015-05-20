@@ -16,11 +16,21 @@ argv = require("yargs")
     alias : "verbose"
     describe: "show additional output"
     type: "boolean"
+  .option "r",
+    alias : "reporters"
+    describe: "reporters to notify about alarms (as hash with name:config)"
+  #  type: "string"
   .argv
+
+log.debug("Reporters: ", argv.reporters)
 
 # read args and pass correct configuration to App
 opts =
   jobs: argv.jobs?.split(',')
+  reporters: if argv.reporters then JSON.parse(argv.reporters) else {}
+
+
+# TODO: opts = options.parse()
 
 # set loglevel
 log.setLevel(if argv.verbose then 1 else 4)

@@ -1,16 +1,21 @@
 log = require("loglevel")
 http = require("http")
+events = require("events")
 Reporter =require("./reporter")
 
 ###*
 # The Worker does most of the magic. It takes a single test config, queries
 # data from elasticsearch, analyzes the result, compares it to the expectation,
 # raises an alarm and informs reporters where appropriate.
+#
+# @class    Worker
+# @extends  events.EventEmitter
 ###
-module.exports = class Worker
+module.exports = class Worker extends events.EventEmitter
 
   ###*
   # Create a new Worker, prepare data, setup request options.
+  #
   # @constructor
   # @param  id  {String}  identifies this individual Worker instance
   # @param  config  {Object}  configuration object as supplied via Job config
@@ -18,11 +23,10 @@ module.exports = class Worker
   constructor: (@id, @config) ->
     if not @config
       throw new Error("no config supplied")
-    # instantiate requested reporters
-    @reporters = @createReporters(@config.reporters)
 
   ###*
   # Execute request and hand over control to onResponse callback.
+  #
   # @method start
   ###
   start: =>
@@ -49,40 +53,28 @@ module.exports = class Worker
       log.error("Worker(#{@id}).start: unhandled error: ", e.message)
 
   ###*
-  # Instantiate reporters according to a given configuration.
-  # @method createReporters
-  # @param  configs  {Object} hash with configuration objects (key=reporter id, value=configuration)
-  ###
-  createReporters: (configs) =>
-    reporters = []
-    for name, cfg of configs
-      log.debug("Worker(#{@id}).createReporters: creating reporter: #{name}")
-      try
-        r = require("./reporters/#{name}")
-        reporters.push(new r(cfg))
-      catch e
-        log.error("Worker(#{@id}).createReporters: ERROR: failed to instantiate reporter: #{name}", e)
-    reporters
-
-  ###*
   # Gets passed ES response data (as object)
+  #
   # @method handleResponseData
   # @param  data  {Object}  result set as returned by ES
   ###
   handleResponseData: (data) ->
+    # FIXME: validate data
+    # ...
     # check number of results and raise error on empty query
     numHits = data.hits.total
     if numHits is 0
-      @raiseAlarm("No results received")
+      @raiseAlarm("No results received", data)
       process.exitCode = 3
     log.debug("Worker(#{@id}).onResponse: query returned #{numHits} hits")
     # if expectations are not met, raise error
     if not @validateResult(data)
-      @raiseAlarm("Alarm condition met")
-      process.exit = 2
+      @raiseAlarm("Alarm condition met", data)
+      process.exitCode = 2
 
   ###
   # Test response and validate against expectation
+  #
   # @method validateResult
   # @param  data  {Object}
   ###
@@ -107,18 +99,22 @@ module.exports = class Worker
     true
 
   ###*
-  # Raise alarm and notify all configured reporters.
+  # Raise alarm - emits "alarm" event that can be handled by interested
+  # listeners.
+  #
   # @method raiseAlarm
-  # @param  message {String}
+  # @emits  alarm
+  # @param  message {String}  error message
+  # @param  data    {object}  any additional data
   ###
-  raiseAlarm: (message) =>
-    # if they don't match: raise alarms and notify reporters
-    for reporter in @reporters
-      log.debug("Worker(#{@id}).raiseAlarm: notifiying reporter ", reporter)
-      reporter.onAlarm(@config, message)
+  raiseAlarm: (message, data) =>
+    log.debug("Worker(#{@id}).raiseAlarm: raising alarm: #{message}", data)
+    @emit("alarm", message, data)
 
   ###*
   # http.request: success callback
+  #
+  # @method onResponse
   ###
   onResponse: (response) =>
     log.debug("Worker(#{@id}).onResponse: status is #{response.statusCode}")
@@ -132,15 +128,19 @@ module.exports = class Worker
         log.debug("Worker(#{@id}).onResponse: response was: ", body)
         # evaluate results and compare them to expectation
         try
-          @handleResponseData(JSON.parse(body))
+          data = JSON.parse(body)
         catch e
           log.error("Worker(#{@id}).onResponse: failed to parse response data")
+        if data
+          @handleResponseData(data)
     else
       @request.end()
       process.exit(1)
 
   ###*
   # http.request: error callback
+  #
+  # @method onError
   ###
   onError: (error) =>
     if error.code is "ECONNREFUSED"
