@@ -80,3 +80,9 @@ TODO
 
 ### Custom reporters
 You can create custom reporters by creating a new class that extends the `Reporter` class (see [ConsoleReporter](src/reporters/console.coffee) for an example).
+
+## TODO
+- branch event-emitter:
+-- revive and finish tests
+-- move optionhandling to OptionParser
+-- use commandline as default option source and use external JSON only as a fallback (with option --config=)
