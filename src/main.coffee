@@ -1,4 +1,5 @@
 App = require("./app")
+options = require("./options")
 log = require("loglevel")
 
 # init commandline options
@@ -28,7 +29,6 @@ log.debug("Reporters: ", argv.reporters)
 opts =
   jobs: argv.jobs?.split(',')
   reporters: if argv.reporters then JSON.parse(argv.reporters) else {}
-
 
 # TODO: opts = options.parse()
 

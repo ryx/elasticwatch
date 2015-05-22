@@ -1,12 +1,11 @@
 log = require("loglevel")
 http = require("http")
 events = require("events")
-Reporter =require("./reporter")
 
 ###*
-# The Worker does most of the magic. It takes a single test config, queries
-# data from elasticsearch, analyzes the result, compares it to the expectation,
-# raises an alarm and informs reporters where appropriate.
+# The Worker does most of the magic. It connects to elasticsearch, queries
+# data, analyzes the result, compares it to the expectation and raises an alarm
+# when appropriate.
 #
 # @class    Worker
 # @extends  events.EventEmitter
@@ -17,12 +16,16 @@ module.exports = class Worker extends events.EventEmitter
   # Create a new Worker, prepare data, setup request options.
   #
   # @constructor
-  # @param  id  {String}  identifies this individual Worker instance
-  # @param  config  {Object}  configuration object as supplied via Job config
+  # @param  id        {String}  identifies this individual Worker instance
+  # @param  host      {String}  elasticsearch hostname to connect to
+  # @param  port      {String}  elasticsearch port to connect to
+  # @param  path      {String}  elasticsearch path (in form /{index}/{type})
+  # @param  query     {Object}  valid elasticsearch query
+  # @param  validator {ResultValidator} a validator object that takes the response and compares it against a given expectation
   ###
-  constructor: (@id, @config) ->
-    if not @config
-      throw new Error("no config supplied")
+  constructor: (@id, @host, @port, @path, @query, @validator) ->
+    if not @id or not @host or not @port or not @path or not @query
+      throw new Error("Worker.constructor: invalid number of options received")
 
   ###*
   # Execute request and hand over control to onResponse callback.
@@ -31,12 +34,12 @@ module.exports = class Worker extends events.EventEmitter
   ###
   start: =>
     # build query data
-    data = JSON.stringify({query:@config.query})
+    data = JSON.stringify({query:@query})
     # create post options
     @options =
-      host: @config.elasticsearch.host
-      port: @config.elasticsearch.port
-      path: "/#{@config.elasticsearch.index}/#{@config.elasticsearch.type}/_search"
+      host: @host
+      port: @port
+      path: "#{@path}/_search"
       method: "POST"
       headers:
         "Content-Type": "application/json"
@@ -50,52 +53,35 @@ module.exports = class Worker extends events.EventEmitter
       @request.write(data)
       @request.end()
     catch e
-      log.error("Worker(#{@id}).start: unhandled error: ", e.message)
+      log.error("Worker(#{@id}).start: unhandled error: #{e.message}")
 
   ###*
-  # Gets passed ES response data (as object)
+  # Gets passed ES response data (as object) and pre-validates the contents.
+  # If data is invalid or result is empty an error is raised. Valid results
+  # are handed over to the ResultValidator for further analysis. If any alarm
+  # condition is met, raiseAlarm is called with the appropriate alarm.
   #
   # @method handleResponseData
   # @param  data  {Object}  result set as returned by ES
   ###
   handleResponseData: (data) ->
-    # FIXME: validate data
-    # ...
-    # check number of results and raise error on empty query
+    # validate response data
+    if not data or typeof data.hits is "undefined"
+      @raiseAlarm("Invalid data received")
+      process.exitCode = 4
+      return false
+    # check number of results and raise error on empty queries
     numHits = data.hits.total
     if numHits is 0
-      @raiseAlarm("No results received", data)
+      @raiseAlarm("No results received")
       process.exitCode = 3
+      return false
     log.debug("Worker(#{@id}).onResponse: query returned #{numHits} hits")
     # if expectations are not met, raise error
-    if not @validateResult(data)
-      @raiseAlarm("Alarm condition met", data)
+    if not @validator.validate(data)
+      @raiseAlarm("Alarm condition met")
       process.exitCode = 2
-
-  ###
-  # Test response and validate against expectation
-  #
-  # @method validateResult
-  # @param  data  {Object}
-  ###
-  validateResult: (data) =>
-    if not data
       return false
-    else
-      consecutiveFails = 0
-      for hit in data.hits.hits
-        #log.debug(hit)
-        val = hit._source[@config.fieldName]
-        log.debug("Worker(#{@id}).validateResult: val #{val}")
-        # value out of range?
-        if (@config.max and val > @config.max) or (@config.min and val < @config.min)
-          log.debug("Worker(#{@id}).validateResult: exceeds range")
-          consecutiveFails++
-        else
-          consecutiveFails = 0
-        # count number of fails
-        if consecutiveFails > @config.tolerance
-          return false
     true
 
   ###*
@@ -107,9 +93,9 @@ module.exports = class Worker extends events.EventEmitter
   # @param  message {String}  error message
   # @param  data    {object}  any additional data
   ###
-  raiseAlarm: (message, data) =>
-    log.debug("Worker(#{@id}).raiseAlarm: raising alarm: #{message}", data)
-    @emit("alarm", message, data)
+  raiseAlarm: (message) =>
+    log.debug("Worker(#{@id}).raiseAlarm: raising alarm: #{message}")
+    @emit("alarm", message, {name:@id})
 
   ###*
   # http.request: success callback
