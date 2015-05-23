@@ -47,3 +47,6 @@ module.exports = class Validator
           log.debug("Validator.validate: more than #{@tolerance} consecutive fails occured")
           return false
     true
+
+  getMessage: ->
+    # @TODO: return human readable error message describing alarm reason

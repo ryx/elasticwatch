@@ -11,7 +11,7 @@ loglevelMock =
     @strDebug = str
   error: (str) ->
     @strError = str
-    console.error(str)  # so we see errors in console output
+    #console.error(str)  # so we see errors in console output
 
 # setup mockery
 mockery.enable({

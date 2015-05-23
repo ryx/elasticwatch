@@ -41,13 +41,15 @@ module.exports = class App
       log.error("ERROR: no jobs defined")
 
   ###*
-  # Instantiate Worker according to a given configuration.
+  # Instantiate Worker according to a given configuration object.
   #
   # @method createWorker
   # @param  config  {Object} job configuration as read from JSON file
   ###
   createWorkerFromConfig: (jobCfg) ->
     log.debug(jobCfg)
+    if not jobCfg
+      return null
      # @TODO: use dynamic validator classes somewhen
     validator = new Validator(jobCfg.fieldName, jobCfg.min, jobCfg.max, jobCfg.tolerance)
     # create Worker
@@ -75,9 +77,11 @@ module.exports = class App
     log.debug("App.createReporter: creating reporter: #{name} ", config)
     try
       r = require("./reporters/#{name}")
-      new r(config)
+      o = new r(config)
+      return o
     catch e
-      log.error("ERROR: failed to instantiate reporter: #{name}", e)
+      console.log("CONFIG: ", r)
+      log.error("ERROR: failed to instantiate reporter '#{name}': #{e.message}", r)
       null
 
   ###*
