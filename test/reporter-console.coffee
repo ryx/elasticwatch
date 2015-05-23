@@ -5,8 +5,6 @@ assert = require("chai").assert
 # mock dependencies
 [reporter] = []
 loglevelMock =
-  strDebug: ""
-  strError: ""
   debug: (str) ->
     @strDebug = str
   error: (str) ->
@@ -28,14 +26,12 @@ ConsoleReporter = require("../src/reporters/console")
 # setup test
 describe "ConsoleReporter", ->
 
-  describe "constructor", ->
+  beforeEach ->
+    reporter = new ConsoleReporter()
 
-    beforeEach ->
-      reporter = new ConsoleReporter()
+  it "should output a log message during construction", ->
+    assert.include(loglevelMock.strDebug, "creating new instance")
 
-    it "should output a log message during construction", ->
-      assert.include(loglevelMock.strDebug, "creating new instance")
-
-    it "should log an error when an alarm signal is caught", ->
-      reporter.onAlarm({name:"myname"}, "mymessage")
-      assert.include(loglevelMock.strError, "'myname' raised alarm: mymessage")
+  it "should log an error when notify is called", ->
+    reporter.notify("mymessage", {name:"myname"})
+    assert.include(loglevelMock.strError, "'myname' raised alarm: mymessage")
