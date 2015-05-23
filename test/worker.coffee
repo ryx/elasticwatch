@@ -11,7 +11,7 @@ loglevelMock =
     @strDebug = str
   error: (str) ->
     @strError = str
-    console.error(str)  # so we see errors in console output
+    #console.error(str)  # so we see errors in console output
 
 # mock "http"
 httpMock =
@@ -46,26 +46,27 @@ describe "Worker", ->
   describe "constructor", ->
 
     it "should have the assigned id", ->
-      assert.equal(new Worker("testworker", "host", 9200, "/_all", {}).id, "testworker", "id property should equal the constructor's first argument")
+      assert.equal(new Worker("testworker", "host", 9200, "/_all", {}, validatorMock).id, "testworker", "id property should equal the constructor's first argument")
 
     it "should break if any argument of [id,host,port,path,query] is missing", ->
-      assert.throw((->new Worker(null, "host", 9200, "/_all", {})), Error, "invalid number of options")
-      assert.throw((->new Worker("testworker", null, 9200, "/_all", {})), Error, "invalid number of options")
-      assert.throw((->new Worker("testworker", "host", null, "/_all", {})), Error, "invalid number of options")
-      assert.throw((->new Worker("testworker", "host", 9200, null, {})), Error, "invalid number of options")
-      assert.throw((->new Worker("testworker", "host", 9200, "/_all", null)), Error, "invalid number of options")
+      assert.throw((->new Worker(null, "host", 9200, "/_all", {}, validatorMock)), Error, "invalid number of options")
+      assert.throw((->new Worker("testworker", null, 9200, "/_all", {}, validatorMock)), Error, "invalid number of options")
+      assert.throw((->new Worker("testworker", "host", null, "/_all", {}, validatorMock)), Error, "invalid number of options")
+      assert.throw((->new Worker("testworker", "host", 9200, null, {}, validatorMock)), Error, "invalid number of options")
+      assert.throw((->new Worker("testworker", "host", 9200, "/_all", null, validatorMock)), Error, "invalid number of options")
+      assert.throw((->new Worker("testworker", "host", 9200, "/_all", {}, null)), Error, "invalid number of options")
 
   describe "start", ->
 
     it "should establish an http connection using the supplied options", ->
-      new Worker("testworker", "testhost", 9200, "/_all", {foo:"bar"}).start()
+      new Worker("testworker", "testhost", 9200, "/_all", {foo:"bar"}, validatorMock).start()
       assert.equal(httpMock.requestOptions.host, "testhost")
       assert.equal(httpMock.requestOptions.port, 9200)
       assert.equal(httpMock.requestOptions.path, "/_all/_search")
 
     it "should send the stringified query through http", ->
       queryMock = {foo:"bar"}
-      new Worker("testworker", "testhost", 9200, "/_all", queryMock).start()
+      new Worker("testworker", "testhost", 9200, "/_all", queryMock, validatorMock).start()
       assert.equal(httpMock.writeData, JSON.stringify({query:queryMock}))
 
   ###

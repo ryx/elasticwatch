@@ -24,8 +24,8 @@ module.exports = class Worker extends events.EventEmitter
   # @param  validator {ResultValidator} a validator object that takes the response and compares it against a given expectation
   ###
   constructor: (@id, @host, @port, @path, @query, @validator) ->
-    if not @id or not @host or not @port or not @path or not @query
-      throw new Error("Worker.constructor: invalid number of options received")
+    if not @id or not @host or not @port or not @path or not @query or not @validator
+      throw new Error("Worker.constructor: invalid number of options received: #{JSON.stringify(arguments)}")
 
   ###*
   # Execute request and hand over control to onResponse callback.
@@ -79,6 +79,7 @@ module.exports = class Worker extends events.EventEmitter
     log.debug("Worker(#{@id}).onResponse: query returned #{numHits} hits")
     # if expectations are not met, raise error
     if not @validator.validate(data)
+      # @TODO: pass validator data as second argument
       @raiseAlarm("Alarm condition met")
       process.exitCode = 2
       return false
