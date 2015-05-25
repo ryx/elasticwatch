@@ -68,21 +68,34 @@ By default elasticwatch does nothing more than executing its configured jobs, ra
 
 To put it simple - reporters are notified about alarms, which means a configured expectation isn't met for a given number of times. They can then do helpful things depending on their type like sending an email, creating a ticket in your ticket system, etc.
 
-Reporters are defined inside a job's config, you can set either one or multiple of them. Most reporters need a specific configuration that is based on the reporter type and defined as a JSON string.
+Reporters are defined inside a job's config, you can set either one or multiple of them. Most reporters need a specific configuration that is based on the reporter type.
 
 ### Available reporters
 
 #### ConsoleReporter
-The ConsoleReporter is just meant for demonstration purpose and simply logs a message to the console.
+The ConsoleReporter is just meant for demonstration purpose and simply logs a message to the console and has no configuration options.
 
-#### EMailReporter
-TODO
+#### MailReporter
+The MailReporter sends an email to one (or multiple) given e-mail address(es). It offers the following configuration:
+```javascript
+"reporters": {
+  "mail": {
+    // comma-separated list of target addresses for notification
+    "targetAddress": "me@example.com,peng@example.com"
+    // number of retry attempts if sending mail fails (defaults to 3)
+    "maxRetries": 3
+  }
+}
+```
 
 ### Custom reporters
 You can create custom reporters by creating a new class that extends the `Reporter` class (see [ConsoleReporter](src/reporters/console.coffee) for an example).
 
 ## TODO
-- branch event-emitter:
--- revive and finish tests
--- move optionhandling to OptionParser
--- use commandline as default option source and use external JSON only as a fallback (with option --config=)
+- branch *event-emitter*:
+ - fix App tests
+- roadmap to *v0.1*:
+  - finish tests for MailReporter
+  - use dynamic configuration for validator so we can have multiple validator types (similar to reporter approach)
+  - move entire optionhandling to OptionParser and provide all options via commandline and use JSON-file only as add-on (using "--config=filename.json); somehow like this: ```elasticwatch
+ --elasticsearch={"host":"localhost","port":9200,"index":"monitoring","type":"rum"} --query={"query":{...}} --validator={"range":{"fieldName":"someKey","min":10,"max":20,"tolerance":9}} --reporters={"mail":{"targetAddress":"me@example.com"}}```
