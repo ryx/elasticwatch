@@ -80,7 +80,6 @@ module.exports = class App
       o = new r(config)
       return o
     catch e
-      console.log("CONFIG: ", r)
       log.error("ERROR: failed to instantiate reporter '#{name}': #{e.message}", r)
       null
 

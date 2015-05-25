@@ -6,10 +6,10 @@ assert = require("chai").assert
 [app, configMock] = []
 loglevelMock =
   debug: (str) ->
-    console.log(str)
+    #console.log(str)
     @strDebug = str
   error: (str) ->
-    console.error(str)
+    #console.error(str)
     @strError = str
 #httpMock =
 #  request: () ->
