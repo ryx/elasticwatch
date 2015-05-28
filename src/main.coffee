@@ -4,24 +4,23 @@ yargs = require("yargs")
 
 # init commandline options
 argv = yargs
-  .usage("Usage: $0 [elasticsearch,query,reporters,validator] or [config]")
+  .usage("Usage: $0 --name=[name] --[elasticsearch,query,reporters,validator]={...} or --config=[config]")
   .epilog("elasticwatch by Rico Pfaus | (c) 2015 | <ricopfaus@gmail.com>")
   .version () ->
     require("../package.json").version
+  .option "name",
+    describe: "identifier for this Job (will be included in reports)"
+    type: "string"
   .option "elasticsearch",
-    #demand: true
     describe: "object with elasticsearch settings [host|port|index|type]"
     type: "string"
   .option "query",
-    #demand: true
     describe: "elasticsearch query (e.g. {\"match\":\"*\"})"
     type: "string"
   .option "reporters",
-    #demand: true
     describe: "reporters to notify about alarms (as hash with name:config)"
     type: "string"
   .option "validator",
-    #demand: true
     describe: "validator for checking expectation (as hash with name:config)"
     type: "string"
   .option "configfile",
@@ -32,12 +31,7 @@ argv = yargs
     type: "boolean"
   .argv
 
-# read args and pass correct configuration to App
-opts =
-  jobs: argv.jobs?.split(',')
-  reporters: if argv.reporters then JSON.parse(argv.reporters) else {}
-
-# if config file is defined, use file data instead of commandline options
+# build options - either from configfile or from commandline
 if argv.configfile
   try
     # @FIXME: map local to global path (currently only global paths accepted)
@@ -46,14 +40,15 @@ if argv.configfile
     log.error("ERROR: failed loading configfile: #{e.message}")
     process.exitCode = 10
 else
-  if not (argv.elasticsearch or argv.query or argv.reporters or argv.validator)
+  if not (argv.name or argv.elasticsearch or argv.query or argv.reporters or argv.validator)
     log.error(yargs.help())
     process.exitCode = 11
   else
     try
       opts =
+        name: argv.name
         elasticsearch: JSON.parse(argv.elasticsearch)
-        query: elasticsearch: JSON.parse(argv.query)
+        query: JSON.parse(argv.query)
         validator: JSON.parse(argv.validator)
         reporters: JSON.parse(argv.reporters)
     catch e
