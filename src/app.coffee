@@ -14,66 +14,69 @@ module.exports = class App
   # Create a new App based on the given configuration.
   #
   # @constructor
+  # @param  config  {Object}  object with configuration options (name, elasticsearch, query, reporter(s) and validator)
   ###
   constructor: (@config) ->
-    @reporters = []
     log.debug("App.constructor: creating app", @config)
+    # validate config
+    for s in ["name","elasticsearch","query","reporters","validator"]
+      if not @config[s]
+        throw new Error("App.constructor: config.#{s} missing")
     # create reporters
+    @reporters = []
     for reporterName, cfg of @config.reporters
-      log.debug("App.constructor: creating reporter #{reporterName}", cfg)
+      log.debug("App.constructor: creating reporter '#{reporterName}'")
       reporter = @createReporter(reporterName, cfg)
       @reporters.push(reporter) if reporter
-    # create a worker for each job
-    if @config.jobs
-      for jobName,i in @config.jobs
-        # load config from file (@TODO: use OptionBuilder instead to use either commandline or file as config)
-        try
-          workerConfig = require("../#{jobName}")
-        catch e
-          if e.code is "MODULE_NOT_FOUND"
-            log.error("ERROR: job module '#{jobName}' not found")
-        # create worker from config
-        worker = @createWorkerFromConfig(workerConfig)
-        if worker
-          worker.on("alarm", @handleAlarm)
-          worker.start()
+    # create validator
+    # @TODO: add support for multiple types and pass it in as {"typename":{...}}
+    @validator = @createValidator("validator", @config.validator)
+    # create worker
+    log.debug("App.constructor: creating worker")
+    @worker = @createWorker(@config.name, @config.elasticsearch, @config.query, @validator)
+    if @worker
+      @worker.on("alarm", @handleAlarm)
+      @worker.start()
     else
-      log.error("ERROR: no jobs defined")
+      throw new Error("App.constructor: worker creation failed")
 
   ###*
-  # Instantiate Worker according to a given configuration object.
+  # Instantiate Worker according to a given configuration.
   #
   # @method createWorker
-  # @param  config  {Object} job configuration as read from JSON file
+  # @static
+  # @param  name                  {String}    worker name/id
+  # @param  elasticsearchConfig   {Object}    elasticsearch config (host/port/index/type)
+  # @param  query                 {Object}    elasticsearch query object
+  # @param  validator             {Validator} validator object to be passed to Worker
   ###
-  createWorkerFromConfig: (jobCfg) ->
-    log.debug(jobCfg)
-    if not jobCfg
+  @createWorker: (name, elasticsearchConfig, query, validator) ->
+    if not name or not elasticsearchConfig or not query or not validator
+      log.error("App.createWorker: invalid number of options")
       return null
-     # @TODO: use dynamic validator classes somewhen
-    validator = new Validator(jobCfg.fieldName, jobCfg.min, jobCfg.max, jobCfg.tolerance)
     # create Worker
-    #try
-    new Worker(
-      jobCfg.name,
-      jobCfg.elasticsearch.host,
-      jobCfg.elasticsearch.port,
-      "/#{jobCfg.elasticsearch.index}/#{jobCfg.elasticsearch.type}",
-      jobCfg.query, # TODO: if we have a query use that, else build custom query using QueryBuilder
-      validator
-    )
-    #catch e
-    #  log.error("ERROR: worker creation failed: #{e.message}")
-    #  null
+    try
+      new Worker(
+        name,
+        elasticsearchConfig.host,
+        elasticsearchConfig.port,
+        "/#{elasticsearchConfig.index}/#{elasticsearchConfig.type}",
+        query, # TODO: if we have a query use that, else build custom query using QueryBuilder
+        validator
+      )
+    catch e
+      log.error("ERROR: worker creation failed: #{e.message}")
+      null
 
   ###*
   # Instantiate a Reporter according to a given configuration.
   #
   # @method createReporter
+  # @static
   # @param  name    {String} module name of reporter to create
   # @param  config  {Object} hash with reporter configuration object
   ###
-  createReporter: (name, config) ->
+  @createReporter: (name, config) ->
     log.debug("App.createReporter: creating reporter: #{name} ", config)
     try
       r = require("./reporters/#{name}")
@@ -81,6 +84,25 @@ module.exports = class App
       return o
     catch e
       log.error("ERROR: failed to instantiate reporter '#{name}': #{e.message}", r)
+      null
+
+  ###*
+  # Instantiate a Validator according to a given configuration.
+  # @FIXME: currently there is only one validator but in the future there will be more different types
+  #
+  # @method createValidator
+  # @static
+  # @param  name    {String} module name of validator to create
+  # @param  config  {Object} hash with validator configuration object
+  ###
+  @createValidator: (name, config) ->
+    log.debug("App.createValidator: creating validator: #{name} ", config)
+    try
+      # @FIXME temp! should pass config object here
+      o = new Validator(config.fieldName, config.min, config.max, config.tolerance)
+      return o
+    catch e
+      log.error("ERROR: failed to instantiate validator '#{name}': #{e.message}", o)
       null
 
   ###*
