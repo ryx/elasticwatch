@@ -18,16 +18,19 @@
       "filter": {
         "range" : {
           "timestamp" : {
-            "gt" : "now-15m"
+            "gt" : "2015-03-06T12:00:00",
+            "lt" : "2015-03-07T00:00:00"
           }
         }
       }
     }
   },
-  "fieldName": "renderTime",
-  "min": 0,
-  "max": 500,
-  "tolerance": 4,
+  "validator": {
+    "fieldName": "renderTime",
+    "min": 0,
+    "max": 500,
+    "tolerance": 4
+  },
   "reporters": {
     "console": {}
   }

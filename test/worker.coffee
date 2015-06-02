@@ -4,15 +4,41 @@ assert = require("chai").assert
 
 # mock dependencies
 [worker] = []
+
+# mock "loglevel"
 loglevelMock =
-  strDebug: ""
-  strError: ""
   debug: (str) ->
     @strDebug = str
   error: (str) ->
     @strError = str
+    #console.error(str)  # so we see errors in console output
+
+# mock "http"
+httpResponseMock =
+  statusCode: 200
+  responseData: JSON.stringify({foo:"bar"})
+  on: (name, callback) ->
+    if name is "data"
+      callback(httpResponseMock.responseData)
+    else if name is "end"
+      callback()
 httpMock =
-  request: (opts, callback) ->
+  request: (options, callback) ->
+    @requestOptions = options
+    {
+      on: ->
+      end: ->
+        callback(httpResponseMock)
+      write: (data) =>
+        httpMock.writeData = data
+    }
+
+# mock "validator"
+validatorMock =
+  validate: (data) ->
+    true
+  getMessage: ->
+    "testmessage"
 
 # setup mockery
 mockery.enable({
@@ -20,62 +46,88 @@ mockery.enable({
 })
 mockery.registerMock("loglevel", loglevelMock)
 mockery.registerMock("http", httpMock)
-#mockery.registerAllowables([
-#  "../reporter"
-#])
+mockery.registerMock("./validator", validatorMock)
+mockery.registerAllowables(["../src/worker", "events"])
 
 # load module to be tested
 Worker = require("../src/worker")
-ConsoleReporter = require("../src/reporters/console")
 
 describe "Worker", ->
 
   describe "constructor", ->
 
     it "should have the assigned id", ->
-      assert.equal(new Worker("testworker", {}).id, "testworker", "id property should equal the constructor's first argument")
+      assert.equal(new Worker("testworker", "host", 9200, "/_all", {}, validatorMock).id, "testworker", "id property should equal the constructor's first argument")
 
-    it "should break on empty config", ->
-      init = ->
-        new Worker("testworker")
-      assert.throw(init, Error, "no config supplied", "constructor should get a config object as second argument")
-
-    it "should instantiate reporter(s) if config.reporters is set", ->
-      worker = new Worker("testworker", {reporters:{"console":{}}})
-      assert.isArray(worker.reporters, "@reporters should be an Array")
+    it "should break if any argument of [id,host,port,path,query] is missing", ->
+      assert.throw((->new Worker(null, "host", 9200, "/_all", {}, validatorMock)), Error, "invalid number of options")
+      assert.throw((->new Worker("testworker", null, 9200, "/_all", {}, validatorMock)), Error, "invalid number of options")
+      assert.throw((->new Worker("testworker", "host", null, "/_all", {}, validatorMock)), Error, "invalid number of options")
+      assert.throw((->new Worker("testworker", "host", 9200, null, {}, validatorMock)), Error, "invalid number of options")
+      assert.throw((->new Worker("testworker", "host", 9200, "/_all", null, validatorMock)), Error, "invalid number of options")
+      assert.throw((->new Worker("testworker", "host", 9200, "/_all", {}, null)), Error, "invalid number of options")
 
   describe "start", ->
 
-    beforeEach ->
-      worker = new Worker("testworker", {})
+    it "should establish an http connection using the supplied options", ->
+      new Worker("testworker", "testhost", 9200, "/_all", {foo:"bar"}, validatorMock).start()
+      assert.equal(httpMock.requestOptions.host, "testhost")
+      assert.equal(httpMock.requestOptions.port, 9200)
+      assert.equal(httpMock.requestOptions.path, "/_all/_search")
 
-    #it "should create a correct query string", ->
-    #  worker = new Worker("testworker", {})
-    #  func = ->
-    #    worker.start()
-    #  assert.throw(func, Error, "failed to parse query")
+    it "should send the stringified query through http", ->
+      queryMock = {foo:"bar"}
+      new Worker("testworker", "testhost", 9200, "/_all", queryMock, validatorMock).start()
+      assert.equal(httpMock.writeData, JSON.stringify({query:queryMock}))
 
-    #it "should break on invalid query data", ->
-
-  describe "sendESRequest", ->
-
-    beforeEach ->
-      worker = new Worker("testworker", {})
-
-    it "should break if any parameter is missing or null", ->
-      assert.isFalse(worker.sendESRequest(null, 9200, "/index/type", {foo:"bar"}))
-      assert.isFalse(worker.sendESRequest("myhost", null, "/index/type", {foo:"bar"}))
-      assert.isFalse(worker.sendESRequest("myhost", 9200, null, {foo:"bar"}))
-      assert.isFalse(worker.sendESRequest("myhost", 9200, "/index/type", null))
-
-    it "should send a successful request if all data is available", ->
-      worker.sendESRequest("myhost", "9200", "/index/type", {foo:"bar"})
-
-  describe "reporters", ->
+  describe "onResponse", ->
+    [worker] = []
 
     beforeEach ->
-      worker = new Worker("testworker", {})
+      worker = new Worker("testworker", "testhost", 9200, "/_all", {foo:"bar"}, validatorMock)
 
-    it "createReporters should take a hash with configs and return an array with Reporter objects", ->
-      reporters = worker.createReporters({console:{}})
-      assert.instanceOf(reporters[0], ConsoleReporter, "first entry in reporters list should be a ConsoleReporter")
+    it "should emit an 'alarm' event when response status isnt 200", (done) ->
+      httpResponseMock.statusCode = 400
+      worker.on "alarm", (msg) ->
+        assert.include(msg, Worker.ResultCodes.NotFound.label)
+        done()
+        worker.off("alarm")
+      worker.start()
+
+  describe "handleResponseData", ->
+    [worker, resultStub] = []
+
+    beforeEach ->
+      worker = new Worker("testworker", "testhost", 9200, "/_all", {foo:"bar"}, validatorMock)
+      resultStub =
+        hits:
+          total: 1
+          hits: [
+            {_source:{prop:1}}
+          ]
+
+    it "should emit an 'alarm' event when data validation fails due to invalid data", (done) ->
+      worker.on "alarm", (msg) ->
+        assert.include(msg, Worker.ResultCodes.InvalidResponse.label)
+        done()
+      worker.handleResponseData({})
+
+    it "should emit an 'alarm' event when handleResponseData didn't receive any results", (done) ->
+      worker.on "alarm", (msg) ->
+        assert.include(msg, Worker.ResultCodes.NoResults.label)
+        done()
+      worker.handleResponseData({hits:{total:0,hits:[]}})
+
+    it "should emit an 'alarm' event when data validation fails", (done) ->
+      validatorMock.validate = (->false)
+      worker.on "alarm", (msg) ->
+        assert.include(msg, Worker.ResultCodes.AlarmCondition.label)
+        done()
+      worker.handleResponseData(resultStub)
+
+    it "should simply return true if data validation succeeds", ->
+      validatorMock.validate = (->true)
+      assert.isTrue(worker.handleResponseData(resultStub))
+
+  # TODO: add tests for ConnectionRefused and UnhandledError
+  # describe "onError", ->

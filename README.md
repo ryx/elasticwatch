@@ -23,21 +23,18 @@ curl -s -XPUT 'http://localhost:9200/monitoring/rum/5' -d '{"requestTime":48,"re
 curl -s -XPUT 'http://localhost:9200/monitoring/rum/6' -d '{"requestTime":43,"responseTime":256,"renderTime":531,"timestamp":"2015-03-06T13:02:34"}'
 ```
 
-... and run elasticwatch with the included *example.json* from the `jobs` dir. (*NOTE: make sure you have an elasticsearch instance up and running at the given URL*)
+... and run elasticwatch with the following commandline (or using the *example.json* from the `jobs` dir). *NOTE: make sure you have an elasticsearch instance up and running at the given URL*
 ```
-bin/elasticwatch --jobs=jobs/example.json
+bin/elasticwatch --elasticsearch='{"host":"localhost","port":9200,"index":"monitoring","type":"rum"}' --query='{"filtered":{"query":{"query_string":{"query":"_exists_:renderTime","analyze_wildcard":true}},"filter":{"range":{"timestamp":{"gt":"2015-03-06T12:00:00","lt":"2015-03-07T00:00:00"}}}}}' --validator='{"range":{"fieldName":"renderTime","min":0,"max":500,"tolerance":4}}' --reporters='{"console":{}}' --debug
 ```
 
-## Jobs
-Jobs are files that tell elasticwatch what to do. This includes: where to find the db host, what data to query from the database, which target values to compare the data to and what to do when alarm conditions are met.
+## Configuration
+Elasticwatch can be configured either via commandline or using a JSON file (supplied via `--configfile` parameter). Both ways require to specify option groups with individual settings (e.g. for elasticsearch, for the reporters, for the validator, ..). An example JSON file can be found in the `jobs`dir.
 
-The job configuration files reside in the `jobs` directory as plain JSON files that may contain the following properties. Check the [example.json](jobs/example.json) for a basic example.
+The following options are currently available:
 
 ### *name (required)*
-A name of your choice to identify this job.
-
-### *info*
-Any kind of info that describes this job.
+A name of your choice to identify this job. This will be used by the reporters to identitfy this individual call.
 
 ### *elasticsearch (required)*
 Settings for elasticsearch, expects the following madatory fields:
@@ -49,34 +46,53 @@ Settings for elasticsearch, expects the following madatory fields:
 ### *query* (required)
 An elasticsearch query statement. Refer to the [elasticsearch documentation](http://www.elasticsearch.org/guide/en/elasticsearch/reference/current) for details about syntax and features. Should return a result set that contains the supplied *fieldName* to match against.
 
-### *fieldName* (required)
-The name of the field in the result set, that is compared against the defined expectation.
+### *validator* (required)
+Validator settings, expects the following mandatory fields:
+- *fieldName*: The name of the field in the result set, that is compared against the defined expectation.
+- *min*: The minimum allowed value for all values within the query. If a series of values (as defined through the *tolerance* property) in the result is lower than this minimum an alarm is raised and reported.
+- *max*: The maxmimum allowed value for all values within the query. If a series of values (as defined through the *tolerance* property) in the result exceed this maximum an alarm is raised and reported.
+- *tolerance*: If a queried series of values exceeds either *min* or *max* for *tolerance*+1 times an alarm is raised.
 
-### *min* (required)
-The minimum allowed value for all values within the query. If a series of values (as defined through the *tolerance* property) in the result is lower than this minimum an alarm is raised and reported.
+### *configfile*
+Name of JSON file to read config from. Expects main options as top-level properties (see [example.json](jobs/example.json) for a live example).
 
-### *max* (required)
-The maxmimum allowed value for all values within the query. If a series of values (as defined through the *tolerance* property) in the result exceed this maximum an alarm is raised and reported.
+## Validators
+A Validator takes a query result received from elasticsearch and compares it against a given expectation. This can be as easy as checking if a value equals a given constant or as complex as checking the average of a series of values against an allowed range with an explicit threshold.
 
-### *tolerance* (required)
-If a queried series of values exceeds either *min* or *max* for *tolerance*+1 times an alarm is raised.
+(TODO:) Validators can be dynamically instantiated und created (just like reporters. To implement new Validators you can simply create a new subclass of the abstract Validator base class.
 
 ## Reporters
-
-### About reporters
 By default elasticwatch does nothing more than executing its configured jobs, raising alarms if expectations aren't met. If you want to perform any action in such an alarm case, you have to define a reporter.
 
 To put it simple - reporters are notified about alarms, which means a configured expectation isn't met for a given number of times. They can then do helpful things depending on their type like sending an email, creating a ticket in your ticket system, etc.
 
-Reporters are defined inside a job's config, you can set either one or multiple of them. Most reporters need a specific configuration that is based on the reporter type and defined as a JSON string.
+Reporters are defined inside a job's config, you can set either one or multiple of them. Most reporters need a specific configuration that is based on the reporter type.
 
 ### Available reporters
 
 #### ConsoleReporter
-The ConsoleReporter is just meant for demonstration purpose and simply logs a message to the console.
+The ConsoleReporter is just meant for demonstration purpose and simply logs a message to the console and has no configuration options.
 
-#### EMailReporter
-TODO
+#### MailReporter
+The MailReporter sends an email to one (or multiple) given e-mail address(es). It offers the following configuration:
+```javascript
+"reporters": {
+  "mail": {
+    // comma-separated list of target addresses for notification
+    "targetAddress": "me@example.com,peng@example.com"
+    // number of retry attempts if sending mail fails (defaults to 3)
+    "maxRetries": 3
+  }
+}
+```
 
 ### Custom reporters
 You can create custom reporters by creating a new class that extends the `Reporter` class (see [ConsoleReporter](src/reporters/console.coffee) for an example).
+
+## TODO
+- branch *event-emitter*:
+ - fix App tests
+ - improve handling (and maybe add notification) for app-level error cases (e.g. 404, ES timeout)
+- roadmap to *v0.1*:
+  - finish tests for MailReporter
+  - use dynamic configuration for validator so we can have multiple validator types (similar to reporter approach)

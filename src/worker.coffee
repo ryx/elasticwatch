@@ -1,62 +1,69 @@
 log = require("loglevel")
 http = require("http")
-Reporter =require("./reporter")
+events = require("events")
 
 ###*
-# The Worker does most of the magic. It takes a single test config, queries
-# data from elasticsearch, analyzes the result, compares it to the expectation,
-# raises an alarm and informs reporters where appropriate.
+# The Worker does most of the magic. It connects to elasticsearch, queries
+# data, analyzes the result, compares it to the expectation and raises an alarm
+# when appropriate.
+#
+# @class    Worker
+# @extends  events.EventEmitter
 ###
-module.exports = class Worker
+module.exports = class Worker extends events.EventEmitter
+
+  # result codes (maps to process exit codes)
+  @ResultCodes:
+    Success:
+      code: 0
+      label: "SUCCESS"
+    AlarmCondition:
+      code: 1
+      label: "ALARM_CONDITION"
+    NoResults:
+      code: 2
+      label: "NO_RESULTS_RECEIVED"
+    NotFound:
+      code: 4
+      label: "NOT_FOUND_404"
+    InvalidResponse:
+      code: 5
+      label: "INVALID_RESPONSE"
+    ConnectionRefused:
+      code: 6
+      label: "CONNECTION_REFUSED"
+    UnhandledError:
+      code: 99
+      label: "UNHANDLED_ERROR"
 
   ###*
   # Create a new Worker, prepare data, setup request options.
+  #
   # @constructor
-  # @param  id  {String}  identifies this individual Worker instance
-  # @param  config  {Object}  configuration object as supplied via Job config
+  # @param  id        {String}  identifies this individual Worker instance
+  # @param  host      {String}  elasticsearch hostname to connect to
+  # @param  port      {String}  elasticsearch port to connect to
+  # @param  path      {String}  elasticsearch path (in form /{index}/{type})
+  # @param  query     {Object}  valid elasticsearch query
+  # @param  validator {ResultValidator} a validator object that takes the response and compares it against a given expectation
   ###
-  constructor: (@id, @config) ->
-    if not @config
-      throw new Error("no config supplied")
-    # instantiate requested reporters
-    @reporters = @createReporters(@config.reporters)
+  constructor: (@id, @host, @port, @path, @query, @validator) ->
+    if not @id or not @host or not @port or not @path or not @query or not @validator
+      throw new Error("Worker.constructor: invalid number of options received: #{JSON.stringify(arguments)}")
 
   ###*
   # Execute request and hand over control to onResponse callback.
+  #
   # @method start
   ###
   start: =>
-    # build query data and throw error on invalid data
-    try
-      data = JSON.stringify({query:@config.query})
-    catch
-      log.error("Worker(#{@id}).start: failed to parse query data: ", e.message)
-      return false
-    # send data
-    @sendESRequest(
-      @config.elasticsearch.host,
-      @config.elasticsearch.port,
-      "/#{@config.elasticsearch.index}/#{@config.elasticsearch.type}",
-      JSON.stringify({query:@config.query}),
-      data
-    )
-
-  ###*
-  # Establish a connection and send a request to elasticsearch
-  # @method sendESRequest
-  # @param  host  {String}  ES host
-  # @param  port  {String}  ES port
-  # @param  path  {String}  ES path (e.g. /index/type)
-  # @param  data  {String}  ES query data as stringified JSON
-  ###
-  sendESRequest: (host, port, path, data) ->
-    if not host or not port or not path or not data
-      return false
+    # build query data
+    data = JSON.stringify({query:@query})
     # create post options
     @options =
-      host: host
-      port: port
-      path: "#{path}/_search"
+      host: @host
+      port: @port
+      path: "#{@path}/_search"
       method: "POST"
       headers:
         "Content-Type": "application/json"
@@ -71,80 +78,59 @@ module.exports = class Worker
       @request.end()
       return true
     catch e
-      log.error("Worker(#{@id}).sendESRequest: unhandled error: ", e.message)
-      return false
+      log.error("Worker(#{@id}).start: unhandled error: #{e.message}")
 
   ###*
-  # Instantiate reporters according to a given configuration.
-  # @method createReporters
-  # @param  configs  {Object} hash with configuration objects (key=reporter id, value=configuration)
-  ###
-  createReporters: (configs) =>
-    reporters = []
-    for name, cfg of configs
-      log.debug("Worker(#{@id}).createReporters: creating reporter: #{name}")
-      try
-        r = require("./reporters/#{name}")
-        reporters.push(new r(cfg))
-      catch e
-        log.error("Worker(#{@id}).createReporters: ERROR: failed to instantiate reporter: #{name}", e)
-    reporters
-
-  ###*
-  # Gets passed ES response data (as object)
+  # Gets passed ES response data (as object) and pre-validates the contents.
+  # If data is invalid or result is empty an error is raised. Valid results
+  # are handed over to the ResultValidator for further analysis. If any alarm
+  # condition is met, raiseAlarm is called with the appropriate alarm.
+  #
   # @method handleResponseData
   # @param  data  {Object}  result set as returned by ES
   ###
   handleResponseData: (data) ->
-    # check number of results and raise error on empty query
-    numHits = data.hits.total
-    if numHits is 0
-      @raiseAlarm("No results received")
-      process.exitCode = 3
-    log.debug("Worker(#{@id}).onResponse: query returned #{numHits} hits")
-    # if expectations are not met, raise error
-    if not @validateResult(data)
-      @raiseAlarm("Alarm condition met")
-      process.exit = 2
-
-  ###
-  # Test response and validate against expectation
-  # @method validateResult
-  # @param  data  {Object}
-  ###
-  validateResult: (data) =>
-    if not data
-      return false
+    result = null
+    rc = Worker.ResultCodes
+    # validate response data
+    if not data or typeof data.hits is "undefined"
+      result = rc.InvalidResponse
     else
-      consecutiveFails = 0
-      for hit in data.hits.hits
-        #log.debug(hit)
-        val = hit._source[@config.fieldName]
-        log.debug("Worker(#{@id}).validateResult: val #{val}")
-        # value out of range?
-        if (@config.max and val > @config.max) or (@config.min and val < @config.min)
-          log.debug("Worker(#{@id}).validateResult: exceeds range")
-          consecutiveFails++
-        else
-          consecutiveFails = 0
-        # count number of fails
-        if consecutiveFails > @config.tolerance
-          return false
-    true
+      # check number of results and raise error on empty queries
+      numHits = data.hits.total
+      log.debug("Worker(#{@id}).onResponse: query returned #{numHits} hits")
+      if numHits is 0
+        result = rc.NoResults
+      else if not @validator.validate(data)
+        # if expectations are not met, raise error
+        result = rc.AlarmCondition
+      else
+        result = rc.Success
+    # perform action
+    if result is rc.Success
+      return true
+    else
+      @raiseAlarm("#{result.label}: #{@validator.getMessage()}")
+      process.exitCode = result.code
+      return false
 
   ###*
-  # Raise alarm and notify all configured reporters.
+  # Raise alarm - emits "alarm" event that can be handled by interested
+  # listeners.
+  #
   # @method raiseAlarm
-  # @param  message {String}
+  # @emits  alarm
+  # @param  message {String}  error message
+  # @param  data    {object}  any additional data
   ###
   raiseAlarm: (message) =>
-    # if they don't match: raise alarms and notify reporters
-    for reporter in @reporters
-      log.debug("Worker(#{@id}).raiseAlarm: notifiying reporter ", reporter)
-      reporter.onAlarm(@config, message)
+    log.debug("Worker(#{@id}).raiseAlarm: raising alarm: #{message}")
+    @emit("alarm", message, {name:@id})
 
   ###*
   # http.request: success callback
+  #
+  # @method onResponse
   ###
   onResponse: (response) =>
     log.debug("Worker(#{@id}).onResponse: status is #{response.statusCode}")
@@ -158,19 +144,29 @@ module.exports = class Worker
         log.debug("Worker(#{@id}).onResponse: response was: ", body)
         # evaluate results and compare them to expectation
         try
-          @handleResponseData(JSON.parse(body))
+          data = JSON.parse(body)
         catch e
           log.error("Worker(#{@id}).onResponse: failed to parse response data")
+        if data
+          @handleResponseData(data)
     else
+      @raiseAlarm("#{Worker.ResultCodes.NotFound.label}")
+      process.exitCode = Worker.ResultCodes.NotFound.code
       @request.end()
-      process.exit(1)
+      process.exit()
 
   ###*
   # http.request: error callback
+  #
+  # @method onError
   ###
   onError: (error) =>
     if error.code is "ECONNREFUSED"
       log.error("ERROR: connection refused, please make sure elasticsearch is running and accessible under #{@options.host}:#{@options.port}")
+      @raiseAlarm("#{Worker.ResultCodes.ConnectionRefused.label}")
+      process.exitCode = Worker.ResultCodes.ConnectionRefused.code
     else
       log.debug("Worker(#{@id}).onError: unhandled error: ", error)
+      @raiseAlarm("#{Worker.ResultCodes.UnhandledError.label}: #{error}")
+      process.exitCode = Worker.ResultCodes.UnhandledError.code
     @request.end()
