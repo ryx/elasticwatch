@@ -23,9 +23,18 @@ module.exports = class Worker extends events.EventEmitter
     NoResults:
       code: 2
       label: "NO_RESULTS_RECEIVED"
+    NotFound:
+      code: 4
+      label: "NOT_FOUND_404"
     InvalidResponse:
-      code: 3
+      code: 5
       label: "INVALID_RESPONSE"
+    ConnectionRefused:
+      code: 6
+      label: "CONNECTION_REFUSED"
+    UnhandledError:
+      code: 99
+      label: "UNHANDLED_ERROR"
 
   ###*
   # Create a new Worker, prepare data, setup request options.
@@ -140,8 +149,10 @@ module.exports = class Worker extends events.EventEmitter
         if data
           @handleResponseData(data)
     else
+      @raiseAlarm("#{Worker.ResultCodes.NotFound.label}")
+      process.exitCode = Worker.ResultCodes.NotFound.code
       @request.end()
-      process.exit(1)
+      process.exit()
 
   ###*
   # http.request: error callback
@@ -151,6 +162,10 @@ module.exports = class Worker extends events.EventEmitter
   onError: (error) =>
     if error.code is "ECONNREFUSED"
       log.error("ERROR: connection refused, please make sure elasticsearch is running and accessible under #{@options.host}:#{@options.port}")
+      @raiseAlarm("#{Worker.ResultCodes.ConnectionRefused.label}")
+      process.exitCode = Worker.ResultCodes.ConnectionRefused.code
     else
       log.debug("Worker(#{@id}).onError: unhandled error: ", error)
+      @raiseAlarm("#{Worker.ResultCodes.UnhandledError.label}: #{error}")
+      process.exitCode = Worker.ResultCodes.UnhandledError.code
     @request.end()

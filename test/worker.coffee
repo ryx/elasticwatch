@@ -14,12 +14,21 @@ loglevelMock =
     #console.error(str)  # so we see errors in console output
 
 # mock "http"
+httpResponseMock =
+  statusCode: 200
+  responseData: JSON.stringify({foo:"bar"})
+  on: (name, callback) ->
+    if name is "data"
+      callback(httpResponseMock.responseData)
+    else if name is "end"
+      callback()
 httpMock =
-  request: (options) ->
+  request: (options, callback) ->
     @requestOptions = options
     {
       on: ->
       end: ->
+        callback(httpResponseMock)
       write: (data) =>
         httpMock.writeData = data
     }
@@ -71,17 +80,19 @@ describe "Worker", ->
       new Worker("testworker", "testhost", 9200, "/_all", queryMock, validatorMock).start()
       assert.equal(httpMock.writeData, JSON.stringify({query:queryMock}))
 
-  ###
-  data = '{"foo":"bar"}'
-  responseMock =
-    statusCode: 200
-    on: (name, callback) ->
-      if name is "data"
-        callback(data)
-      else if name is "end"
-        callback()
-  assert.equal(true, false)
-  ###
+  describe "onResponse", ->
+    [worker] = []
+
+    beforeEach ->
+      worker = new Worker("testworker", "testhost", 9200, "/_all", {foo:"bar"}, validatorMock)
+
+    it "should emit an 'alarm' event when response status isnt 200", (done) ->
+      httpResponseMock.statusCode = 400
+      worker.on "alarm", (msg) ->
+        assert.include(msg, Worker.ResultCodes.NotFound.label)
+        done()
+        worker.off("alarm")
+      worker.start()
 
   describe "handleResponseData", ->
     [worker, resultStub] = []
@@ -117,3 +128,6 @@ describe "Worker", ->
     it "should simply return true if data validation succeeds", ->
       validatorMock.validate = (->true)
       assert.isTrue(worker.handleResponseData(resultStub))
+
+  # TODO: add tests for ConnectionRefused and UnhandledError
+  # describe "onError", ->
