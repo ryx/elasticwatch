@@ -4,6 +4,7 @@ Elasticwatch is a nifty tool that queries an elasticsearch database and compares
 
 This allows to create intelligent alarming setups based on your ELK data, no matter if it's gathered from infrastructure monitoring, RUM data, ecommerce KPIs or anything else. No other tools needed, if set up as a cronjob.
 
+
 ## Getting started
 
 First clone the git repository and install the dependencies.
@@ -23,13 +24,14 @@ curl -s -XPUT 'http://localhost:9200/monitoring/rum/5' -d '{"requestTime":48,"re
 curl -s -XPUT 'http://localhost:9200/monitoring/rum/6' -d '{"requestTime":43,"responseTime":256,"renderTime":531,"timestamp":"2015-03-06T13:02:34"}'
 ```
 
-... and run elasticwatch with the following commandline (or using the *example.json* from the `jobs` dir). *NOTE: make sure you have an elasticsearch instance up and running at the given URL*
+... and run elasticwatch with the following commandline (or using the *example.json* from the `examples` dir). *NOTE: make sure you have an elasticsearch instance up and running at the given URL*
 ```
 bin/elasticwatch --elasticsearch='{"host":"localhost","port":9200,"index":"monitoring","type":"rum"}' --query='{"filtered":{"query":{"query_string":{"query":"_exists_:renderTime","analyze_wildcard":true}},"filter":{"range":{"timestamp":{"gt":"2015-03-06T12:00:00","lt":"2015-03-07T00:00:00"}}}}}' --validator='{"range":{"fieldName":"renderTime","min":0,"max":500,"tolerance":4}}' --reporters='{"console":{}}' --debug
 ```
 
+
 ## Configuration
-Elasticwatch can be configured either via commandline or using a JSON file (supplied via `--configfile` parameter). Both ways require to specify option groups with individual settings (e.g. for elasticsearch, for the reporters, for the validator, ..). An example JSON file can be found in the `jobs`dir.
+Elasticwatch can be configured either via commandline or using a JSON file (supplied via `--configfile` parameter). Both ways require to specify option groups with individual settings (e.g. for elasticsearch, for the reporters, for the validator, ..). An example JSON file can be found in the `examples`dir.
 
 The following options are currently available:
 
@@ -57,24 +59,23 @@ Validator settings, expects the following mandatory fields:
 Reporter(s) to notify about alarms. Expects an object with key/value pairs where *key* ist the name of the reporter and *value* is the reporter-specific configuration. See [Reporters](#reporters) for more details.
 
 ### *configfile*
-Name of JSON file to read config from. Expects main options as top-level properties (see [example.json](jobs/example.json) for a live example).
+Name of JSON file to read config from. Expects main options as top-level properties (see [example.json](examples/example.json) for a live example).
+
 
 ## Validators
 A Validator takes a query result received from elasticsearch and compares it against a given expectation. This can be as easy as checking if a value equals a given constant or as complex as checking the average of a series of values against an allowed range with an explicit threshold.
 
-(TODO:) Validators can be dynamically instantiated und created (just like reporters. To implement new Validators you can simply create a new subclass of the abstract Validator base class.
+(TODO:) Validators can be dynamically instantiated and created (just like reporters). To implement new Validators you can simply create a new subclass of the abstract Validator base class.
 
 ## Reporters
-By default elasticwatch does nothing more than executing its configured jobs, raising alarms if expectations aren't met. If you want to perform any action in such an alarm case, you have to define a reporter.
+By default elasticwatch does nothing more than executing its configured job, raising alarms if expectations aren't met. If you want to perform any action in such an alarm case, you have to define a reporter.
 
 To put it simple - reporters are notified about alarms, which means a configured expectation isn't met for a given number of times. They can then do helpful things depending on their type like sending an email, creating a ticket in your ticket system, etc.
 
 Reporters are defined inside a job's config, you can set either one or multiple of them. Most reporters need a specific configuration that is based on the reporter type.
 
-### Available reporters
 
-#### ConsoleReporter
-The ConsoleReporter is just meant for demonstration purpose and simply logs a message to the console and has no configuration options.
+### Available reporters
 
 #### MailReporter
 The MailReporter sends an email to one (or multiple) given e-mail address(es). It offers the following configuration:
@@ -89,12 +90,16 @@ The MailReporter sends an email to one (or multiple) given e-mail address(es). I
 }
 ```
 
+#### ConsoleReporter
+The ConsoleReporter is just meant for demonstration purpose and simply logs a message to the console and has no configuration options.
+
+
 ### Custom reporters
 You can create custom reporters by creating a new class that extends the `Reporter` class (see [ConsoleReporter](src/reporters/console.coffee) for an example).
 
 ## TODO
 - roadmap to *v0.1*:
-  - use dynamic configuration for validator so we can have multiple validator types (similar to reporter approach)
+  - dynamization of Validator: use dynamic configuration for validator so we can have multiple validator types (similar to reporter approach)
   - fix App tests
   - improve tests for app-level error cases (404, ES timeout, Unhandled)
   - jobs -> examples
