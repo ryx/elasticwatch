@@ -23,9 +23,9 @@ curl -s -XPUT 'http://localhost:9200/monitoring/rum/5' -d '{"requestTime":48,"re
 curl -s -XPUT 'http://localhost:9200/monitoring/rum/6' -d '{"requestTime":43,"responseTime":256,"renderTime":531,"timestamp":"2015-03-06T13:02:34"}'
 ```
 
-... and run elasticwatch with the included *example.json* from the `jobs` dir. (*NOTE: make sure you have an elasticsearch instance up and running at the given URL*)
+... and run elasticwatch with the following commandline (or using the *example.json* from the `jobs` dir). *NOTE: make sure you have an elasticsearch instance up and running at the given URL*
 ```
-bin/elasticwatch --jobs=jobs/example.json
+bin/elasticwatch --elasticsearch='{"host":"localhost","port":9200,"index":"monitoring","type":"rum"}' --query='{"filtered":{"query":{"query_string":{"query":"_exists_:renderTime","analyze_wildcard":true}},"filter":{"range":{"timestamp":{"gt":"2015-03-06T12:00:00","lt":"2015-03-07T00:00:00"}}}}}' --validator='{"range":{"fieldName":"renderTime","min":0,"max":500,"tolerance":4}}' --reporters='{"console":{}}' --debug
 ```
 
 ## Jobs
