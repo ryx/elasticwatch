@@ -53,6 +53,9 @@ Validator settings, expects the following mandatory fields:
 - *max*: The maxmimum allowed value for all values within the query. If a series of values (as defined through the *tolerance* property) in the result exceed this maximum an alarm is raised and reported.
 - *tolerance*: If a queried series of values exceeds either *min* or *max* for *tolerance*+1 times an alarm is raised.
 
+### *reporters (required)*
+Reporter(s) to notify about alarms. Expects an object with key/value pairs where *key* ist the name of the reporter and *value* is the reporter-specific configuration. See [Reporters](#reporters) for more details.
+
 ### *configfile*
 Name of JSON file to read config from. Expects main options as top-level properties (see [example.json](jobs/example.json) for a live example).
 
@@ -90,9 +93,9 @@ The MailReporter sends an email to one (or multiple) given e-mail address(es). I
 You can create custom reporters by creating a new class that extends the `Reporter` class (see [ConsoleReporter](src/reporters/console.coffee) for an example).
 
 ## TODO
-- branch *event-emitter*:
- - fix App tests
- - improve handling (and maybe add notification) for app-level error cases (e.g. 404, ES timeout)
 - roadmap to *v0.1*:
-  - finish tests for MailReporter
   - use dynamic configuration for validator so we can have multiple validator types (similar to reporter approach)
+  - fix App tests
+  - improve tests for app-level error cases (404, ES timeout, Unhandled)
+  - jobs -> examples
+  - use coffee only as devDependency (to allow npm package)
