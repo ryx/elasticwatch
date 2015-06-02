@@ -12,6 +12,21 @@ events = require("events")
 ###
 module.exports = class Worker extends events.EventEmitter
 
+  # result codes (maps to process exit codes)
+  @ResultCodes:
+    Success:
+      code: 0
+      label: "SUCCESS"
+    AlarmCondition:
+      code: 1
+      label: "ALARM_CONDITION"
+    NoResults:
+      code: 2
+      label: "NO_RESULTS_RECEIVED"
+    InvalidResponse:
+      code: 3
+      label: "INVALID_RESPONSE"
+
   ###*
   # Create a new Worker, prepare data, setup request options.
   #
@@ -65,25 +80,29 @@ module.exports = class Worker extends events.EventEmitter
   # @param  data  {Object}  result set as returned by ES
   ###
   handleResponseData: (data) ->
+    result = null
+    rc = Worker.ResultCodes
     # validate response data
     if not data or typeof data.hits is "undefined"
-      @raiseAlarm("Invalid data received")
-      process.exitCode = 4
+      result = rc.InvalidResponse
+    else
+      # check number of results and raise error on empty queries
+      numHits = data.hits.total
+      log.debug("Worker(#{@id}).onResponse: query returned #{numHits} hits")
+      if numHits is 0
+        result = rc.NoResults
+      else if not @validator.validate(data)
+        # if expectations are not met, raise error
+        result = rc.AlarmCondition
+      else
+        result = rc.Success
+    # perform action
+    if result is rc.Success
+      return true
+    else
+      @raiseAlarm("#{result.label}: #{@validator.getMessage()}")
+      process.exitCode = result.code
       return false
-    # check number of results and raise error on empty queries
-    numHits = data.hits.total
-    if numHits is 0
-      @raiseAlarm("No results received")
-      process.exitCode = 3
-      return false
-    log.debug("Worker(#{@id}).onResponse: query returned #{numHits} hits")
-    # if expectations are not met, raise error
-    if not @validator.validate(data)
-      # @TODO: pass validator data as second argument
-      @raiseAlarm("Alarm condition met")
-      process.exitCode = 2
-      return false
-    true
 
   ###*
   # Raise alarm - emits "alarm" event that can be handled by interested

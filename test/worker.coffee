@@ -28,6 +28,8 @@ httpMock =
 validatorMock =
   validate: (data) ->
     true
+  getMessage: ->
+    "testmessage"
 
 # setup mockery
 mockery.enable({
@@ -95,20 +97,20 @@ describe "Worker", ->
 
     it "should emit an 'alarm' event when data validation fails due to invalid data", (done) ->
       worker.on "alarm", (msg) ->
-        assert.include(msg, "Invalid data received")
+        assert.include(msg, Worker.ResultCodes.InvalidResponse.label)
         done()
       worker.handleResponseData({})
 
     it "should emit an 'alarm' event when handleResponseData didn't receive any results", (done) ->
       worker.on "alarm", (msg) ->
-        assert.include(msg, "No results received")
+        assert.include(msg, Worker.ResultCodes.NoResults.label)
         done()
       worker.handleResponseData({hits:{total:0,hits:[]}})
 
     it "should emit an 'alarm' event when data validation fails", (done) ->
       validatorMock.validate = (->false)
       worker.on "alarm", (msg) ->
-        assert.include(msg, "Alarm condition met")
+        assert.include(msg, Worker.ResultCodes.AlarmCondition.label)
         done()
       worker.handleResponseData(resultStub)
 
