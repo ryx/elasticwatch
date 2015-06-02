@@ -1,6 +1,6 @@
 {
   "name": "elasticwatch",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "watch/report/alarm tool for elasticsearch",
   "author": "Rico Pfaus <ricopfaus@gmail.com>",
   "keywords": [
