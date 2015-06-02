@@ -26,14 +26,14 @@ module.exports = class App
     @reporters = []
     for reporterName, cfg of @config.reporters
       log.debug("App.constructor: creating reporter '#{reporterName}'")
-      reporter = @createReporter(reporterName, cfg)
+      reporter = App.createReporter(reporterName, cfg)
       @reporters.push(reporter) if reporter
     # create validator
     # @TODO: add support for multiple types and pass it in as {"typename":{...}}
-    @validator = @createValidator("validator", @config.validator)
+    @validator = App.createValidator("validator", @config.validator)
     # create worker
     log.debug("App.constructor: creating worker")
-    @worker = @createWorker(@config.name, @config.elasticsearch, @config.query, @validator)
+    @worker = App.createWorker(@config.name, @config.elasticsearch, @config.query, @validator)
     if @worker
       @worker.on("alarm", @handleAlarm)
       @worker.start()
@@ -80,7 +80,7 @@ module.exports = class App
     log.debug("App.createReporter: creating reporter: #{name} ", config)
     try
       r = require("./reporters/#{name}")
-      o = new r(config)
+      o = new (r)(config)
       return o
     catch e
       log.error("ERROR: failed to instantiate reporter '#{name}': #{e.message}", r)
