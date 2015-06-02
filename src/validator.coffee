@@ -18,6 +18,7 @@ module.exports = class Validator
   # @param  tolerance {int}     maximum allowed number of consecutive values that do not match the expectation
   ###
   constructor: (@fieldName, @min, @max, @tolerance) ->
+    @fails = []
     if not @fieldName or @min is null or @max is null or @tolerance is null
       throw new Error("invalid number of options")
 
@@ -31,7 +32,7 @@ module.exports = class Validator
     if not data
       return false
     else
-      consecutiveFails = 0
+      @fails = []
       for hit in data.hits.hits
         #log.debug(hit)
         val = hit._source[@fieldName]
@@ -39,14 +40,21 @@ module.exports = class Validator
         # value out of range?
         if (@max and val > @max) or (@min and val < @min)
           log.debug("Validator.validate: exceeds range")
-          consecutiveFails++
+          @fails.push(val)
         else
-          consecutiveFails = 0
+          @fails.length = 0
         # count number of fails
-        if consecutiveFails > @tolerance
+        if @fails.length > @tolerance
           log.debug("Validator.validate: more than #{@tolerance} consecutive fails occured")
           return false
     true
 
+  ###*
+  # Return human readable error message describing alarm reason. Empty if no
+  # validation failed yet.
+  #
+  # @method getMessage
+  # @return {String}
+  ###
   getMessage: ->
-    # @TODO: return human readable error message describing alarm reason
+    "'#{@fieldName}' outside range '#{@min}-#{@max}' for '#{@tolerance+1}' consecutive times: '#{@fails.join(',')}'"
