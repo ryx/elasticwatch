@@ -121,7 +121,7 @@ describe "Worker", ->
     it "should emit an 'alarm' event when data validation fails", (done) ->
       validatorMock.validate = (->false)
       worker.on "alarm", (msg) ->
-        assert.include(msg, Worker.ResultCodes.AlarmCondition.label)
+        assert.include(msg, Worker.ResultCodes.ValidationFailed.label)
         done()
       worker.handleResponseData(resultStub)
 

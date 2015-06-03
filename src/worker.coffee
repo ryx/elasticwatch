@@ -17,24 +17,24 @@ module.exports = class Worker extends events.EventEmitter
     Success:
       code: 0
       label: "SUCCESS"
-    AlarmCondition:
+    ValidationFailed:
       code: 1
-      label: "ALARM_CONDITION"
+      label: "ALARM_VALIDATION_FAILED"
     NoResults:
       code: 2
-      label: "NO_RESULTS_RECEIVED"
+      label: "ALARM_NO_RESULTS_RECEIVED"
     NotFound:
       code: 4
-      label: "NOT_FOUND_404"
+      label: "ALARM_NOT_FOUND_404"
     InvalidResponse:
       code: 5
-      label: "INVALID_RESPONSE"
+      label: "ALARM_INVALID_RESPONSE"
     ConnectionRefused:
       code: 6
-      label: "CONNECTION_REFUSED"
+      label: "ALARM_CONNECTION_REFUSED"
     UnhandledError:
       code: 99
-      label: "UNHANDLED_ERROR"
+      label: "ALARM_UNHANDLED_ERROR"
 
   ###*
   # Create a new Worker, prepare data, setup request options.
@@ -103,7 +103,7 @@ module.exports = class Worker extends events.EventEmitter
         result = rc.NoResults
       else if not @validator.validate(data)
         # if expectations are not met, raise error
-        result = rc.AlarmCondition
+        result = rc.ValidationFailed
       else
         result = rc.Success
     # perform action
